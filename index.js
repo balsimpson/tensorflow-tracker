@@ -1,5 +1,6 @@
 const storageKey = "knnClassifier";
-const classifier = loadClassifierFromLocalStorage();
+// const classifier = loadClassifierFromLocalStorage();
+const classifier = new knnClassifier.KNNClassifier();
 
 let net;
 
