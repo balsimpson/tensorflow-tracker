@@ -13,7 +13,8 @@ async function toDatasetObject(dataset) {
 			const data = await value.data();
 
 			return {
-				classId: Number(classId),
+				// classId: Number(classId),
+				classId: classId,
 				data: Array.from(data),
 				shape: value.shape
 			};
@@ -58,6 +59,21 @@ async function app() {
 		const activation = net.infer(img, 'conv_preds');
 		// Pass the intermediate activation to the classifier.
 		classifier.addExample(activation, classId);
+
+		// Update label count
+		let labels_container = document.getElementById('labels_container');
+		// console.log(labels_container.children[classId]);
+
+		labels_container.children[classId].innerHTML = 
+		`${classId} (${classifier.getClassExampleCount(classId)[classId]}) <i class="close material-icons" style="
+		padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`
+		// labels_container.children[classId].innerHTML = 
+		// `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${labels[classId].name} style="display: inline-flex;">${labels[classId].name} (${classifier.getClassExampleCount(classId)[classId]})<i class="close material-icons" style="padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`
+		const dataset = classifier.getClassifierDataset();
+		const datasetOjb = await toDatasetObject(dataset);
+
+		console.log(datasetOjb);
+		// console.log(classifier.getClassExampleCount(classId)[classId]);
 		// Dispose the tensor to release the memory.
 		img.dispose();
 	};
@@ -78,15 +94,15 @@ async function app() {
 		if (e.target.classList.contains('btn')) {
 			let index;
 			let id = e.target.id;
-			console.log(e.target.id);
 			// get index of the label
 			for (key in labels) {
 				if (labels[key].name == id) {
 					index = key;
+					console.log(labels[key]);
 					labels[key].count++;
+					addExample(labels[key].name);
 				}
 			}
-			addExample(index);
 		}
 	});
 
@@ -104,25 +120,17 @@ async function app() {
 			const activation = net.infer(img, 'conv_preds');
 			// Get the most likely class and confidences from the classifier module.
 			const result = await classifier.predictClass(activation);
-
-			const classes = ['A', 'B', 'C'];
-			// document.getElementById('console').innerText = `
-			// 			prediction: ${classes[result.label]} | ${result.confidences[result.label].toFixed(2)}
-			// 			`;
-
-			// console.log('result:', result);
+			// console.log(result);
 			let predictionTxt = '';
-			if (result.classIndex !== undefined) {
-				
-				console.log(labels[result.label]);
+
+			let labels_arr = Object.keys(labels);
+			// if (result.classIndex !== undefined) {
+				// console.log(labels[result.label]);
 				predictionTxt = `
-				<strong>${labels[result.label].name || ''}</strong>
+				<strong>${labels_arr[result.label] || [result.label] || ''}</strong>
 				<div id="add_label_btn" class="btn btn-small blue-grey darken-3">${result.confidences[result.label].toFixed(2)}</div>
 				`
-				// predictionTxt = `
-				// prediction: ${[result.label]} | ${result.confidences[result.label].toFixed(2)}
-				// `
-			}
+			// }
 
 			document.getElementById('console').innerHTML = predictionTxt;
 			// Dispose the tensor to release the memory.
@@ -145,19 +153,29 @@ function addLabelBtnClick(event) {
 }
 
 function deleteLabel(event) {
-	console.log(labels);
-	console.log(event.target.parentElement.id);
+	// console.log(labels);
+	// console.log(event.target.parentElement.id);
 	let id = event.target.parentElement.id;
 	let labels_container = event.target.parentElement.parentElement;
 	let label = event.target.parentElement;
 	labels_container.removeChild(label);
+	classifier.clearClass(id);
+	// get label examples count
 
-	for (key in labels) {
-		console.log(key);
-		if (labels[key].name == id) {
-			labels.splice(key, 1);
-		}
-	}
+	// for (key in labels) {
+	// 	let example_count = classifier.getClassExampleCount(key);
+	// 	console.log(key, example_count);
+	// 	if (classifier.getNumClasses() > 0) {
+	// 		if (labels[key].name == id) {
+	// 			classifier.clearClass(key);
+	// 			console.log('class cleared')
+	// 			labels.splice(key, 1);
+	// 		}
+	// 	} else {
+	// 		console.log('class not cleared')
+	// 		labels.splice(key, 1);
+	// 	}
+	// }
 	console.log('labels', labels);
 }
 
@@ -181,10 +199,11 @@ async function saveClassifierInLocalStorage(event, classifier) {
 		const dataset = classifier.getClassifierDataset();
 		const datasetOjb = await toDatasetObject(dataset);
 
-		
+		console.log(classifier.getClassExampleCount());
+
 		let model_data = {
 			name: model_name,
-			labels: labels,
+			labels: classifier.getClassExampleCount(),
 			model: datasetOjb
 		}
 
@@ -211,12 +230,13 @@ function loadClassifierFromLocalStorage() {
 		models = data ? data : [];
 		console.log(models);
 
-		// if (data.models && data.models.length) {
-		// 	const dataset = fromDatasetObject(data.models[0]);
-		// 	console.log('dataset:', dataset);
-		// 	classifier.setClassifierDataset(dataset);
+		if (data && data.length) {
+			const dataset = fromDatasetObject(data[0].model);
+			labels = data[0].labels;
+			console.log('dataset:', dataset);
+			classifier.setClassifierDataset(dataset);
 
-		// }
+		}
 	}
 	return classifier;
 }
@@ -241,13 +261,13 @@ function addLabel(label) {
 
 	labels.push({
 		name: label,
-		count: 0
+		count: 0,
+		classIndex: labels.length-1
 	})
 
 	labels_container.innerHTML += `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${label} style="
     display: inline-flex;">${label} (0)<i class="close material-icons" style="
-    padding: 0 0 0 10;
-    color: black;" onclick="deleteLabel(event)">close</i>`;
+    padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`;
 }
 
 app();
