@@ -16,7 +16,8 @@
 
 	<style>
 		#console {
-			min-height: 100px;
+			min-height: 60px;
+			color: whitesmoke;
 		}
 
 		#labels_container {
@@ -106,7 +107,15 @@
 
 
 
-		<div id="console" class="flow-text">
+		<div id="console" class="center-align">
+			<div class="row">
+				<div class="col s6 right">
+					some text
+				</div>
+				<div class="col s6 left">
+					123
+				</div>
+			</div>
 			<div id="preloader" class="progress">
 				<div class="indeterminate blue-grey lighten-2"></div>
 			</div>
@@ -114,7 +123,8 @@
 
 		<div class="row center-align" id="video_container">
 			<div class="col s12">
-				<video class="z-depth-3" autoplay="" playsinline="" muted="" id="webcam" width="224" height="224"></video>
+				<video class="z-depth-3" autoplay="" playsinline="" muted="" id="webcam" width="224"
+					height="224"></video>
 			</div>
 		</div>
 
@@ -128,27 +138,54 @@
 
 
 			<div class="row">
+				<div class="input-field col s12">
+					<select>
+						<option value="" disabled selected>Choose your option</option>
+						<option value="1">Option 1</option>
+						<option value="2">Option 2</option>
+						<option value="3">Option 3</option>
+					</select>
+					<label>Materialize Select</label>
+				</div>
+			</div>
+
+			<div class="row">
+
 				<form id="add_label_form" class="col s12">
 					<div class="input-field">
-						<input placeholder="Name of the label" id="label_name" type="text" class="validate center white-text" style="
-						width: 224;
-					">
-						<!-- <span id="validation_text" class="helper-text" data-error="cannot be empty"
-							data-success=""></span> -->
+						<input placeholder="Name of the label" id="label_name" type="text"
+							class="validate center white-text" style=" width: 224;">
 					</div>
 					<div id="add_label_btn" class="btn btn-small blue-grey darken-3">Add Label</div>
 				</form>
+
 			</div>
 			<!-- <a class="btn-floating btn-large waves-effect waves-light red"><i class="material-icons">add</i></a> -->
 		</div>
 		<!-- <img id="img" crossorigin src="https://i.imgur.com/JlUvsxa.jpg" width="227" height="227"/> -->
 	</div>
 
+
+
 	<footer class="page-footer transparent center">
 		<div class="container">
 			<div class="col s12">
+
+				<div class="row">
+					<form id="add_model_form" class="col s12">
+						<div class="input-field">
+							<input placeholder="Name of the model" id="model_name" type="text"
+								class="validate center white-text" style="
+							width: 224;">
+						</div>
+						<button class="btn btn-small green darken-4" id="saveModel">Save Model</button>
+					</form>
+				</div>
+
+				<button class="btn btn-small red darken-4" id="clearsaveddata">Delete Data</button>
+
 				<button class="btn btn-small red darken-4" id="clearall">Delete Model</button>
-				<button class="btn btn-small green darken-4" id="saveModel">Save Model</button>
+
 			</div>
 		</div>
 	</footer>
@@ -160,8 +197,14 @@
 			// var elems_fab = document.querySelectorAll('.fixed-action-btn');
 			// var instances = M.FloatingActionButton.init(elems_fab, {});
 
-			var elems_collapsible = document.querySelectorAll('.collapsible');
-			var instances = M.Collapsible.init(elems_collapsible, {});
+			// var elems_collapsible = document.querySelectorAll('.collapsible');
+			// var instances = M.Collapsible.init(elems_collapsible, {});
+
+			// var elems = document.querySelectorAll('.dropdown-trigger');
+			// var instances = M.Dropdown.init(elems, {});
+
+			var elems = document.querySelectorAll('select');
+			var instances = M.FormSelect.init(elems, {});
 		});
 	</script>
 	<!-- Load index.js after the content of the page -->
