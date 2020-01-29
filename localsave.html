@@ -10,12 +10,9 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 	<!-- Load the latest version of TensorFlow.js -->
-	<!-- <script src="https://unpkg.com/@tensorflow/tfjs"></script> -->
-	<!-- <script src="https://unpkg.com/@tensorflow-models/mobilenet"></script> -->
-	<!-- <script src="https://unpkg.com/@tensorflow-models/knn-classifier"></script> -->
-	<script src="js/tf.min.js"></script>
-	<script src="js/mobilenet.min.js"></script>
-	<script src="js/knn-classifier.min.js"></script>
+	<script src="https://unpkg.com/@tensorflow/tfjs"></script>
+	<script src="https://unpkg.com/@tensorflow-models/mobilenet"></script>
+	<script src="https://unpkg.com/@tensorflow-models/knn-classifier"></script>
 
 	<style>
 		#console {
@@ -94,20 +91,6 @@
 			color: #4CAF50;
 		}
 
-		.select-wrapper input.select-dropdown {
-			color: aliceblue;
-		}
-
-		.select-wrapper .caret {
-			position: absolute;
-			right: 0;
-			top: 0;
-			bottom: 0;
-			margin: auto 0;
-			z-index: 0;
-			fill: #fafafa;
-		}
-
 		.input-field .helper-text::after {
 			opacity: 1;
 			position: unset;
@@ -121,17 +104,8 @@
 
 	<div class="container">
 		<!-- Page Content goes here -->
-		<div class="row">
-			<div class="input-field col s12">
-				<select id="models_list">
-					<!-- <option value="" disabled selected>Choose your option</option>
-					<option value="1">Option 1</option>
-					<option value="2">Option 2</option>
-					<option value="3">Option 3</option> -->
-				</select>
-				<label>Current model</label>
-			</div>
-		</div>
+
+
 
 		<div id="console" class="center-align">
 			<div class="row">
@@ -157,7 +131,17 @@
 			</div>
 
 
-			
+			<div class="row">
+				<div class="input-field col s12">
+					<select>
+						<option value="" disabled selected>Choose your option</option>
+						<option value="1">Option 1</option>
+						<option value="2">Option 2</option>
+						<option value="3">Option 3</option>
+					</select>
+					<label>Materialize Select</label>
+				</div>
+			</div>
 
 			<div class="row">
 
@@ -202,8 +186,6 @@
 
 	<!--JavaScript at end of body for optimized loading-->
 	<script type="text/javascript" src="js/materialize.min.js"></script>
-	<!-- Load index.js after the content of the page -->
-	<script src="index.js"></script>
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
 			// var elems_fab = document.querySelectorAll('.fixed-action-btn');
@@ -214,43 +196,13 @@
 
 			// var elems = document.querySelectorAll('.dropdown-trigger');
 			// var instances = M.Dropdown.init(elems, {});
-			console.log('M:', models);
+
 			var elems = document.querySelectorAll('select');
-			// var instances = M.FormSelect.init(elems, {});
-			renderModelSelect(models);
 			var instances = M.FormSelect.init(elems, {});
-	
-			// document.getElementById('models_list').change(function () {
-				// });
 		});
-
-		document.getElementById('models_list').addEventListener('change', function (event) {
-
-			console.log('e:', event.target.value);
-			loadModel(classifier, event.target.value)
-		});
-
-		
-
-		function renderModelSelect(models) {
-			models_arr = Object.keys(models);
-
-			if (models_arr.length) {
-				models_arr.map(m => {
-					if (m !== 'current') {
-
-						if (models.current === m) {
-							document.getElementById('models_list').innerHTML += `<option selected value="${m}">${m}</option>`
-						} else {
-							document.getElementById('models_list').innerHTML += `<option value="${m}">${m}</option>`
-						}
-					}
-				})
-			} else {
-				document.getElementById('models_list').innerHTML += `<option class="white-text" value="">No models saved</option>`
-			}
-		}
 	</script>
+	<!-- Load index.js after the content of the page -->
+	<!-- <script src="index.js"></script> -->
 
 </body>
 

@@ -2,7 +2,7 @@ const storageKey = "knnClassifier";
 
 let net;
 let labels = [];
-let models = [];
+let models = {};
 
 const classifier = loadClassifierFromLocalStorage();
 const webcamElement = document.getElementById('webcam');
@@ -11,16 +11,15 @@ async function toDatasetObject(dataset) {
 	const result = await Promise.all(
 		Object.entries(dataset).map(async ([classId, value], index) => {
 			const data = await value.data();
-
 			return {
-				// classId: Number(classId),
-				classId: classId,
+				classId: Number(classId),
+				// classId: classId,
 				data: Array.from(data),
 				shape: value.shape
 			};
 		})
 	);
-	console.log('result:', result);
+	// console.log('toDatasetObject:', result);
 	return result;
 };
 
@@ -30,79 +29,103 @@ function fromDatasetObject(datasetObject) {
 		const index = Number(indexString);
 
 		result[index] = tensor;
-
+		// console.log('fromDatasetObject:', result);
 		return result;
 	}, {});
 
 }
 
 async function app() {
-	console.log('Loading mobilenet..');
-
 	// Load the model.
 	net = await mobilenet.load();
-	console.log('Successfully loaded model');
-
-	// Create an object from Tensorflow.js data API which could capture image 
-	// from the web camera as Tensor.
+	console.log('Successfully loaded mobilenet');
 	const webcam = await tf.data.webcam(webcamElement);
 	document.getElementById('preloader').classList.add('hide');
 	console.log('Successfully loaded video');
 
-	// Reads an image from the webcam and associates it with a specific class
-	// index.
-	const addExample = async classId => {
-		// Capture an image from the web camera.
+	let label_count = 0;
+
+	const addExample = async (classId, label_name) => {
+		console.log('classId: ', classId);
 		const img = await webcam.capture();
-		// Get the intermediate activation of MobileNet 'conv_preds' and pass that
-		// to the KNN classifier.
 		const activation = net.infer(img, 'conv_preds');
-		// Pass the intermediate activation to the classifier.
+
+		// let labels_arr = Object.entries(labels);
+		// label_name = labels_arr[classId][0];
+		// label_name = labels_arr[classId][0];
 		classifier.addExample(activation, classId);
+		label_count = classifier.getClassExampleCount()[classId];
+		// console.log(label_count);
+
+		// labels[classId] = {
+		// 	name: label_name,
+		// 	count: label_count
+		// };
+		// labels[label_name] = {
+		// 	classIndex: classId,
+		// 	count: label_count
+		// };
+		labels.forEach((value, index) => {
+			// console.log('value', value.name);
+			// console.log('index', index);
+			if (value.name === label_name) {
+				labels[index].classIndex = classId;
+				labels[index].count = label_count;
+			}
+		});
+		console.log('labels', labels);
+
+		// Update current model
+		updateClassifierInLocalStorage(event, classifier);
+
+		// Object.entries(labels).forEach((value, index)=> {
+		// 	if (value[0] === classId) {
+		// 		console.log(value[0], index);
+		// 		label_name = value[0];
+		// 		label_count = classifier.getClassExampleCount(label_name)[classId];
+		// 		console.log(label_name, label_count);
+		// 		classifier.addExample(activation, index);
+		// 	}
+		// });
 
 		// Update label count
 		let labels_container = document.getElementById('labels_container');
-		// console.log(labels_container.children[classId]);
 
-		labels_container.children[classId].innerHTML = 
-		`${classId} (${classifier.getClassExampleCount(classId)[classId]}) <i class="close material-icons" style="
+
+		labels_container.children[classId].innerHTML =
+			`${label_name} (${label_count}) <i class="close material-icons" style="
 		padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`
-		// labels_container.children[classId].innerHTML = 
-		// `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${labels[classId].name} style="display: inline-flex;">${labels[classId].name} (${classifier.getClassExampleCount(classId)[classId]})<i class="close material-icons" style="padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`
-		const dataset = classifier.getClassifierDataset();
-		const datasetOjb = await toDatasetObject(dataset);
 
-		console.log(datasetOjb);
+		// const dataset = classifier.getClassifierDataset();
+		// const datasetOjb = await toDatasetObject(dataset);
+
+		// console.log('datasetOjb:', datasetOjb);
 		// console.log(classifier.getClassExampleCount(classId)[classId]);
 		// Dispose the tensor to release the memory.
 		img.dispose();
 	};
 
-	// When clicking a button, add an example for that class.
-	// document.getElementById('class-a').addEventListener('click', () => addExample('class-a'));
-	// document.getElementById('class-b').addEventListener('click', () => addExample('class-b'));
-	// document.getElementById('class-c').addEventListener('click', () => addExample('class-c'));
 
-	document.getElementById('clearall').addEventListener('click', async () => {
-		let res = await clearAll(classifier);
-		console.log(res);
-	});
+	// Clear all labels from current model
+	document.getElementById('clearall').addEventListener('click', async () => clearAll(classifier));
 
+	// save model
 	document.getElementById('saveModel').addEventListener('click', (event) => saveClassifierInLocalStorage(event, classifier));
 
-	document.getElementById('labels_container').addEventListener('click', (e) => {
-		if (e.target.classList.contains('btn')) {
+	// label button click listener
+	document.getElementById('labels_container').addEventListener('click', (event) => {
+		if (event.target.classList.contains('btn')) {
 			let index;
-			let id = e.target.id;
+			let id = event.target.id;
 			// get index of the label
-			for (key in labels) {
-				if (labels[key].name == id) {
-					index = key;
-					console.log(labels[key]);
-					labels[key].count++;
-					addExample(labels[key].name);
+			// console.log('Labels', labels);
+			labels.forEach((value, index) => {
+				// console.log('value', value.name);
+				// console.log('index', index);
+				if (value.name === id) {
+					addExample(index, id);
 				}
-			}
+			});
 		}
 	});
 
@@ -110,7 +133,7 @@ async function app() {
 
 	document.getElementById('add_label_form').addEventListener('submit', (event) => addLabelBtnClick(event));
 	document.getElementById('add_label_btn').addEventListener('click', (event) => addLabelBtnClick(event));
-	
+
 	document.getElementById('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
 
 	while (true) {
@@ -120,17 +143,27 @@ async function app() {
 			const activation = net.infer(img, 'conv_preds');
 			// Get the most likely class and confidences from the classifier module.
 			const result = await classifier.predictClass(activation);
-			// console.log(result);
 			let predictionTxt = '';
 
-			let labels_arr = Object.keys(labels);
-			// if (result.classIndex !== undefined) {
-				// console.log(labels[result.label]);
-				predictionTxt = `
-				<strong>${labels_arr[result.label] || [result.label] || ''}</strong>
-				<div id="add_label_btn" class="btn btn-small blue-grey darken-3">${result.confidences[result.label].toFixed(2)}</div>
-				`
-			// }
+			// console.log(classifier.getClassExampleCount());
+			if (result.label !== undefined) {
+
+				labels.forEach((value, index) => {
+					// console.log(value.classIndex, Number(result.label));
+					if (value.classIndex === Number(result.label)) {
+						// classifier.clearClass(labels[index].classIndex);
+						// labels.splice(index, 1);
+						predictionTxt = `
+						<strong>${[value.name] || ''}</strong>
+						<div id="add_label_btn" class="btn btn-small blue-grey darken-3">${result.confidences[result.label].toFixed(2)}</div>
+						`
+						// updateClassifierInLocalStorage(event, classifier)
+					}
+				});
+
+				// console.log(result);
+				
+			}
 
 			document.getElementById('console').innerHTML = predictionTxt;
 			// Dispose the tensor to release the memory.
@@ -143,49 +176,55 @@ async function app() {
 
 function addLabelBtnClick(event) {
 	event.preventDefault();
-	let label = document.getElementById('label_name').value;
+	let label_name = document.getElementById('label_name').value;
+	let label_count = 0;
 
-	if (label) {
-		addLabel(label);
+	if (label_name) {
+		let label = {
+			name: label_name,
+			count: label_count
+		};
+		labels.push(label);
+		renderLabel([label_name, label_count]);
 		document.getElementById('label_name').value = '';
 		document.getElementById('label_name').classList.remove('valid');
 	}
 }
 
+function renderLabel(label) {
+
+	let labels_container = document.getElementById('labels_container');
+
+	labels_container.innerHTML += `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${label.name} style="
+    display: inline-flex;">${label.name} (${label.count})<i class="close material-icons" style="
+    padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`;
+
+}
+
 function deleteLabel(event) {
-	// console.log(labels);
-	// console.log(event.target.parentElement.id);
 	let id = event.target.parentElement.id;
 	let labels_container = event.target.parentElement.parentElement;
 	let label = event.target.parentElement;
 	labels_container.removeChild(label);
-	classifier.clearClass(id);
-	// get label examples count
 
-	// for (key in labels) {
-	// 	let example_count = classifier.getClassExampleCount(key);
-	// 	console.log(key, example_count);
-	// 	if (classifier.getNumClasses() > 0) {
-	// 		if (labels[key].name == id) {
-	// 			classifier.clearClass(key);
-	// 			console.log('class cleared')
-	// 			labels.splice(key, 1);
-	// 		}
-	// 	} else {
-	// 		console.log('class not cleared')
-	// 		labels.splice(key, 1);
-	// 	}
-	// }
-	console.log('labels', labels);
+	labels.forEach((value, index) => {
+		if (value.name === id) {
+			classifier.clearClass(labels[index].classIndex);
+			labels.splice(index, 1);
+
+			updateClassifierInLocalStorage(event, classifier)
+		}
+	});
 }
 
 async function clearAll(classifier) {
-	classifier.clearAllClasses()
+	classifier.clearAllClasses();
 }
 
 async function clearSavedData(event) {
 	event.preventDefault();
-	const jsonStr = JSON.stringify([]);
+	const jsonStr = JSON.stringify({});
+	console.log('data cleared');
 	localStorage.setItem(storageKey, jsonStr);
 }
 
@@ -199,22 +238,54 @@ async function saveClassifierInLocalStorage(event, classifier) {
 		const dataset = classifier.getClassifierDataset();
 		const datasetOjb = await toDatasetObject(dataset);
 
-		console.log(classifier.getClassExampleCount());
+		console.log(classifier.getClassExampleCount(), models);
 
 		let model_data = {
 			name: model_name,
-			labels: classifier.getClassExampleCount(),
+			// labels: classifier.getClassExampleCount(),
+			labels: labels,
 			model: datasetOjb
 		}
 
-		models.push(model_data);
-		
+		models[model_name] = model_data;
+		models.current = model_name;
+
+		console.log('models:', models);
 		const jsonStr = JSON.stringify(models);
-		localStorage.setItem(storageKey, jsonStr);
+		let res = localStorage.setItem(storageKey, jsonStr);
+		console.log('res', res);
 	} else {
 		console.log('model name cannot be empty');
 	}
+}
 
+async function updateClassifierInLocalStorage(event, classifier) {
+	event.preventDefault();
+	let model_name = models.current;
+
+	if (model_name) {
+		console.log('updating...' + model_name);
+		const dataset = classifier.getClassifierDataset();
+		const datasetOjb = await toDatasetObject(dataset);
+	
+		console.log(classifier.getClassExampleCount(), models);
+	
+		let model_data = {
+			name: model_name,
+			// labels: classifier.getClassExampleCount(),
+			labels: labels,
+			model: datasetOjb
+		}
+	
+		models[model_name] = model_data;
+		models.current = model_name;
+	
+		console.log('models:', models);
+		const jsonStr = JSON.stringify(models);
+		localStorage.setItem(storageKey, jsonStr);
+	} else {
+		console.log('no model  name to update');
+	}
 }
 
 function loadClassifierFromLocalStorage() {
@@ -223,23 +294,37 @@ function loadClassifierFromLocalStorage() {
 
 	let saved_data = localStorage.getItem(storageKey);
 	// console.log(saved_data);
-	
-	if (saved_data) {
-		const data = JSON.parse(saved_data);
 
-		models = data ? data : [];
+	if (saved_data) {
+		saved_data = JSON.parse(saved_data);
+	
+		models = saved_data ? saved_data : {};
 		console.log(models);
 
-		if (data && data.length) {
-			const dataset = fromDatasetObject(data[0].model);
-			labels = data[0].labels;
-			console.log('dataset:', dataset);
-			classifier.setClassifierDataset(dataset);
-
+		if (models && models.current) {
+			loadModel(classifier, models.current);
 		}
 	}
 	return classifier;
 }
+
+function loadModel(classifier, model_name) {
+	console.log('loading ', model_name);
+	const dataset = fromDatasetObject(models[model_name].model);
+	classifier.setClassifierDataset(dataset);
+	labels = models[model_name].labels;
+
+	models.current = model_name;
+	document.getElementById('labels_container').innerHTML = '';
+	
+	labels.forEach((value, index) => {
+		renderLabel(value);
+	});
+
+	const jsonStr = JSON.stringify(models);
+	localStorage.setItem(storageKey, jsonStr);
+}
+
 // function loadClassifierFromLocalStorage() {
 // 	console.log('loading...');
 // 	const classifier = new knnClassifier.KNNClassifier();
@@ -255,19 +340,6 @@ function loadClassifierFromLocalStorage() {
 // 	return classifier;
 // }
 
-function addLabel(label) {
 
-	let labels_container = document.getElementById('labels_container');
-
-	labels.push({
-		name: label,
-		count: 0,
-		classIndex: labels.length-1
-	})
-
-	labels_container.innerHTML += `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${label} style="
-    display: inline-flex;">${label} (0)<i class="close material-icons" style="
-    padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`;
-}
 
 app();
