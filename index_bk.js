@@ -50,9 +50,21 @@ async function app() {
 		const img = await webcam.capture();
 		const activation = net.infer(img, 'conv_preds');
 
+		// let labels_arr = Object.entries(labels);
+		// label_name = labels_arr[classId][0];
+		// label_name = labels_arr[classId][0];
 		classifier.addExample(activation, classId);
 		label_count = classifier.getClassExampleCount()[classId];
+		// console.log(label_count);
 
+		// labels[classId] = {
+		// 	name: label_name,
+		// 	count: label_count
+		// };
+		// labels[label_name] = {
+		// 	classIndex: classId,
+		// 	count: label_count
+		// };
 		labels.forEach((value, index) => {
 			// console.log('value', value.name);
 			// console.log('index', index);
@@ -65,6 +77,16 @@ async function app() {
 
 		// Update current model
 		updateClassifierInLocalStorage(event, classifier);
+
+		// Object.entries(labels).forEach((value, index)=> {
+		// 	if (value[0] === classId) {
+		// 		console.log(value[0], index);
+		// 		label_name = value[0];
+		// 		label_count = classifier.getClassExampleCount(label_name)[classId];
+		// 		console.log(label_name, label_count);
+		// 		classifier.addExample(activation, index);
+		// 	}
+		// });
 
 		// Update label count
 		let labels_container = document.getElementById('labels_container');
@@ -109,8 +131,8 @@ async function app() {
 
 	// document.getElementById('getModel').addEventListener('click', (e) => loadClassifierFromLocalStorage());
 
-	document.getElementById('add_label_form').addEventListener('submit', (event) => addNewLabel(event));
-	document.getElementById('add_label_btn').addEventListener('click', (event) => addNewLabel(event));
+	document.getElementById('add_label_form').addEventListener('submit', (event) => addLabelBtnClick(event));
+	document.getElementById('add_label_btn').addEventListener('click', (event) => addLabelBtnClick(event));
 
 	document.getElementById('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
 
@@ -140,7 +162,7 @@ async function app() {
 				});
 
 				// console.log(result);
-
+				
 			}
 
 			document.getElementById('console').innerHTML = predictionTxt;
@@ -152,72 +174,22 @@ async function app() {
 	}
 }
 
-class Label {
-	constructor(name, count, id) {
-		this.name = name;
-		this.count = count;
-		this.id = id;
-	}
-
-	add() {
-		labels.push(this);
-		return this;
-	}
-
-	delete() {
-		// delete html
-		// delete from labels array
-		labels = labels.filter(label => {
-			return this.name != label.name;
-		})
-		return this;
-	}
-
-	updateId(id) {
-		this.id = id;
-		return this;
-	}
-
-	updateCount() {
-		this.count++;
-		return this;
-	}
-
-	render() {
-		console.log(this.name);
-		let labels_container = document.getElementById('labels_container');
-
-		labels_container.innerHTML += `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${this.name} style="display: inline-flex;">${this.name} (${this.count})<i class="close material-icons" style="padding: 0 0 0 10;color: black;" onclick="deleteLabel(event, ${this.name})">close</i>`;
-		return this;
-	}
-}
-
-function addNewLabel(event) {
+function addLabelBtnClick(event) {
 	event.preventDefault();
-	let label_name = getEl('label_name').value;
-	let label = new Label(label_name, 0, '');
-	label.add().render();
+	let label_name = document.getElementById('label_name').value;
+	let label_count = 0;
 
-	getEl('label_name').value = '';
-	getEl('label_name').classList.remove('valid');
+	if (label_name) {
+		let label = {
+			name: label_name,
+			count: label_count
+		};
+		labels.push(label);
+		renderLabel([label_name, label_count]);
+		document.getElementById('label_name').value = '';
+		document.getElementById('label_name').classList.remove('valid');
+	}
 }
-
-// function addLabelBtnClick(event) {
-// 	event.preventDefault();
-// 	let label_name = document.getElementById('label_name').value;
-// 	let label_count = 0;
-
-// 	if (label_name) {
-// 		let label = {
-// 			name: label_name,
-// 			count: label_count
-// 		};
-// 		labels.push(label);
-// 		renderLabel([label_name, label_count]);
-// 		document.getElementById('label_name').value = '';
-// 		document.getElementById('label_name').classList.remove('valid');
-// 	}
-// }
 
 function renderLabel(label) {
 
@@ -229,21 +201,20 @@ function renderLabel(label) {
 
 }
 
-function deleteLabel(event, labelName) {
-	
-	let name = event.target.parentElement.id;
-	let labelInstance = labels.filter(l => {
-		return l.name === name;
-	})
-	
-	console.log(labelInstance);
+function deleteLabel(event) {
+	let id = event.target.parentElement.id;
+	let labels_container = event.target.parentElement.parentElement;
+	let label = event.target.parentElement;
+	labels_container.removeChild(label);
 
-	if (labelInstance[0].id) {
-		classifier.clearClass(labelInstance[0].id);
-	}
+	labels.forEach((value, index) => {
+		if (value.name === id) {
+			classifier.clearClass(labels[index].classIndex);
+			labels.splice(index, 1);
 
-	labelInstance[0].delete();
-	updateClassifierInLocalStorage(event, classifier);
+			updateClassifierInLocalStorage(event, classifier)
+		}
+	});
 }
 
 async function clearAll(classifier) {
@@ -296,19 +267,19 @@ async function updateClassifierInLocalStorage(event, classifier) {
 		console.log('updating...' + model_name);
 		const dataset = classifier.getClassifierDataset();
 		const datasetOjb = await toDatasetObject(dataset);
-
+	
 		console.log(classifier.getClassExampleCount(), models);
-
+	
 		let model_data = {
 			name: model_name,
 			// labels: classifier.getClassExampleCount(),
 			labels: labels,
 			model: datasetOjb
 		}
-
+	
 		models[model_name] = model_data;
 		models.current = model_name;
-
+	
 		console.log('models:', models);
 		const jsonStr = JSON.stringify(models);
 		localStorage.setItem(storageKey, jsonStr);
@@ -326,7 +297,7 @@ function loadClassifierFromLocalStorage() {
 
 	if (saved_data) {
 		saved_data = JSON.parse(saved_data);
-
+	
 		models = saved_data ? saved_data : {};
 		console.log(models);
 
@@ -346,7 +317,7 @@ function loadModel(classifier, model_name) {
 	classifier.setClassifierDataset(dataset);
 	// update labels
 	labels = models[model_name].labels;
-
+	
 
 	// render labels
 	document.getElementById('labels_container').innerHTML = '';
@@ -359,10 +330,6 @@ function loadModel(classifier, model_name) {
 	// update models on local storage
 	const jsonStr = JSON.stringify(models);
 	localStorage.setItem(storageKey, jsonStr);
-}
-
-function getEl(elementId) {
-	return document.getElementById(elementId);
 }
 
 // function loadClassifierFromLocalStorage() {
