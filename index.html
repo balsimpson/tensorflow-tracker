@@ -21,6 +21,7 @@
 		#preloader_container {
 			min-height: 20px;
 		}
+
 		#console {
 			min-height: 60px;
 			color: whitesmoke;
@@ -143,11 +144,7 @@
 		</div>
 
 		<div id="console" class="center-align">
-			<div class="row">
-			</div>
-			<!-- <div id="preloader" class="progress">
-				<div class="indeterminate blue-grey lighten-2"></div>
-			</div> -->
+			
 		</div>
 
 		<div class="row center-align" id="video_container">
@@ -234,7 +231,7 @@
 		});
 
 		function renderModelSelect(models) {
-			
+
 			if (models.length > 0) {
 				models.map(model => {
 					getEl('models_list').innerHTML += `<option selected value="${model.name}">${model.name}</option>`

@@ -23,7 +23,6 @@ class Model {
 		return labels;
 	}
 	update(labelsArr, updatedModelData) {
-		console.log(labelsArr);
 		this.labels = labelsArr;
 		this.model = updatedModelData;
 		return this;
@@ -68,7 +67,7 @@ class Label {
 	}
 
 	render() {
-		console.log(this.name);
+		// console.log(this.name);
 		let labels_container = document.getElementById('labels_container');
 
 		labels_container.innerHTML += `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${this.name} style="display: inline-flex;">${this.name} (${this.count})<i class="close material-icons" style="padding: 0 0 0 10;color: black;" onclick="deleteLabel(event, ${this.name})">close</i>`;
@@ -93,7 +92,7 @@ async function toDatasetObject(dataset) {
 };
 
 function fromDatasetObject(datasetObject) {
-	console.log('datasetObject:', datasetObject);
+	// console.log('datasetObject:', datasetObject);
 	let test = Object.entries(datasetObject).reduce((result, [indexString, { data, shape }]) => {
 		const tensor = tf.tensor2d(data, shape);
 		const index = Number(indexString);
@@ -101,10 +100,10 @@ function fromDatasetObject(datasetObject) {
 		let label = datasetObject[indexString].classId;
 		result[label] = tensor;
 		// result[indexString] = tensor;
-		console.log('result:', result);
+		// console.log('result:', result);
 		return result;
 	}, {});
-	console.log('test:', test)
+	// console.log('test:', test)
 	return test;
 }
 
@@ -144,14 +143,14 @@ async function app() {
 	let label_count = 0;
 
 	const addExample = async (classId, label_name) => {
-		console.log('classId: ', classId);
+		// console.log('classId: ', classId);
 		const img = await webcam.capture();
 		const activation = net.infer(img, 'conv_preds');
 
 		let res = classifier.addExample(activation, label_name);
 
 		label_count = classifier.getClassExampleCount()[label_name];
-		console.log('label_count', label_count);
+		// console.log('label_count', label_count);
 
 		let [label] = labels.filter(l => {
 			return l.name === label_name;
@@ -160,8 +159,8 @@ async function app() {
 		label.updateCount(label_count)
 			.updateId(classId);
 
-		console.log('add exampe label:', label);
-		console.log('labels', labels);
+		// console.log('add exampe label:', label);
+		// console.log('labels', labels);
 
 		// Update current model
 		updateModel();
@@ -197,7 +196,7 @@ async function app() {
 			let index;
 			let id = event.target.id;
 
-			console.log(classifier.getClassExampleCount());
+			// console.log(classifier.getClassExampleCount());
 			// get index of the label
 			// console.log('Labels', labels);
 			labels.forEach((value, index) => {
@@ -240,10 +239,33 @@ async function app() {
 					let label_name = label ? label.name : '';
 					let confidence = result.confidences[result.label];
 
+					// confidence color
+					let btn_color = 'blue-grey';
+
+					if (typeof confidence === 'number') {
+						if (confidence > 0.70) {
+							btn_color = 'teal';
+						} else if (confidence > 0.5 && confidence < 0.70) {
+							btn_color = 'deep orange';
+						} else if (confidence < 0.50) {
+							btn_color = 'red';
+						}
+					}
+
 					predictionTxt = `
+					<div class="row valign-wrapper">
+						<div class="col s6 right-align">
 							<strong>${label_name}</strong>
-							<div id="add_label_btn" class="btn btn-small blue-grey darken-3">${confidence.toFixed(2)}</div>
-							`
+						</div>
+						<div class="col s6 left-align">
+							<div class="btn btn-small ${btn_color} darken-3">${confidence.toFixed(2)}</div>
+						</div>
+					</div>
+					`
+					// predictionTxt = `
+					// 		<strong>${label_name}</strong>
+					// 		<div class="btn btn-small ${btn_color} darken-3">${confidence.toFixed(2)}</div>
+					// 		`
 				}
 
 				document.getElementById('console').innerHTML = predictionTxt;
@@ -282,14 +304,14 @@ async function saveNewModel(event) {
 	modelDB.current = model.name;
 	modelDB.models = models;
 
-	console.log(modelDB);
+	// console.log(modelDB);
 	saveToLocalStorage(modelDB);
 }
 
 async function updateModel() {
 	// event.preventDefault();
 	if (modelDB.current) {
-		console.log('before:', modelDB);
+		// console.log('before:', modelDB);
 		const dataset = classifier.getClassifierDataset();
 		const datasetOjb = await toDatasetObject(dataset);
 
@@ -297,12 +319,12 @@ async function updateModel() {
 			return m.name === modelDB.current;
 		})
 
-		console.log('datasetOjb:', datasetOjb, model);
+		// console.log('datasetOjb:', datasetOjb, model);
 		model.update(labels, datasetOjb);
 
 		modelDB.models = models;
 		saveToLocalStorage(modelDB);
-		console.log('after:', modelDB);
+		// console.log('after:', modelDB);
 	} else {
 		console.log('no models saved:', modelDB);
 	}
@@ -325,17 +347,11 @@ function deleteLabel(event) {
 		return l.name === name;
 	})
 
-	console.log('deleting: ', label.id, name);
+	// console.log('deleting: ', label.id, name);
 
 	if (label.count > 0) {
 		classifier.clearClass(name);
 	}
-	// if (label.id !== undefined) {
-	// 	console.log('clearing: ', label.id);
-	// 	classifier.clearClass(label.id);
-	// } else {
-	// 	console.log('else: ', label.id);
-	// }
 
 	label.delete();
 	let labels_container = event.target.parentElement.parentElement;
@@ -352,7 +368,7 @@ async function clearAll(classifier) {
 async function clearSavedData(event) {
 	event.preventDefault();
 	const jsonStr = JSON.stringify({});
-	console.log('data cleared');
+	// console.log('data cleared');
 	localStorage.setItem(storageKey, jsonStr);
 }
 
@@ -361,40 +377,13 @@ async function saveToLocalStorage(dataToSave) {
 	localStorage.setItem(storageKey, jsonStr);
 }
 
-// async function updateClassifierInLocalStorage(event, classifier) {
-// 	event.preventDefault();
-// 	let model_name = models.current;
-
-// 	if (model_name) {
-// 		console.log('updating...' + model_name);
-// 		const dataset = classifier.getClassifierDataset();
-// 		const datasetOjb = await toDatasetObject(dataset);
-
-// 		let model_data = {
-// 			name: model_name,
-// 			// labels: classifier.getClassExampleCount(),
-// 			labels: labels,
-// 			model: datasetOjb
-// 		}
-
-// 		models[model_name] = model_data;
-// 		models.current = model_name;
-
-// 		console.log('updated models:', models);
-// 		const jsonStr = JSON.stringify(models);
-// 		localStorage.setItem(storageKey, jsonStr);
-// 	} else {
-// 		console.log('no model  name to update');
-// 	}
-// }
-
 function loadClassifierFromLocalStorage() {
 
 	const classifier = new knnClassifier.KNNClassifier();
 
 	let saved_data = localStorage.getItem(storageKey);
 	saved_data = JSON.parse(saved_data);
-	console.log(saved_data);
+	// console.log(saved_data);
 
 	if (saved_data && saved_data.models) {
 
@@ -403,14 +392,14 @@ function loadClassifierFromLocalStorage() {
 			model.add();
 
 			if (models && saved_data.current && saved_data.current === model.name) {
-				console.log('loading model - ', model.name)
+				// console.log('loading model - ', model.name)
 				modelDB.current = saved_data.current;
 				loadModel(saved_data.current, classifier);
 			}
 		})
 
 		modelDB.models = models;
-		console.log('modelDB: Updated - ', modelDB);
+		// console.log('modelDB: Updated - ', modelDB);
 	}
 	return classifier;
 }
@@ -426,7 +415,7 @@ function loadModel(model_name, classifier) {
 			return m.name === model_name;
 		})
 
-		console.log('loading ', model_name, model);
+		// console.log('loading ', model_name, model);
 		// get model
 		const dataset = fromDatasetObject(model.model);
 		// update classifier
@@ -437,8 +426,8 @@ function loadModel(model_name, classifier) {
 			label.add().render();
 		});
 
-		console.log('loaded model', model);
-		console.log('loaded labels', labels);
+		// console.log('loaded model', model);
+		// console.log('loaded labels', labels);
 
 		toast(`${model.name} is loaded!`);
 		// update current model name
@@ -458,21 +447,6 @@ function getEl(elementId) {
 function toast(message) {
 	M.toast({html: message});
 }
-
-// function loadClassifierFromLocalStorage() {
-// 	console.log('loading...');
-// 	const classifier = new knnClassifier.KNNClassifier();
-// 	const datasetJson = localStorage.getItem(storageKey);
-// 	if (datasetJson) {
-// 		const datasetObj = JSON.parse(datasetJson);
-// 		const dataset = fromDatasetObject(datasetObj);
-// 		console.log('dataset:', dataset);
-// 		classifier.setClassifierDataset(dataset);
-// 		let labelcount = classifier.getClassExampleCount();
-// 		console.log(labelcount);
-// 	}
-// 	return classifier;
-// }
 
 window.onload = () => {
 	app();
