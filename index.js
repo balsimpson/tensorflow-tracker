@@ -2,18 +2,87 @@ const storageKey = "knnClassifier";
 
 let net;
 let labels = [];
-let models = {};
+let models = [];
+let modelDB = {};
 
-const classifier = loadClassifierFromLocalStorage();
-const webcamElement = document.getElementById('webcam');
+class Model {
+	constructor(name, labels, dataObj) {
+		this.name = name;
+		// this.labels = labels;
+		this.labels = this.updateLabels(labels);
+		this.model = dataObj;
+	}
+	add() {
+		models.push(this);
+		return this;
+	}
+	updateLabels(labelsArr) {
+		let labels = labelsArr.map(label => {
+			return new Label(label.name, label.count, label.id)
+		})
+		return labels;
+	}
+	update(labelsArr, updatedModelData) {
+		console.log(labelsArr);
+		this.labels = labelsArr;
+		this.model = updatedModelData;
+		return this;
+	}
+	delete() {
+		// delete from models array
+		models = models.filter(model => {
+			return this.name != model.name;
+		})
+		return this;
+	}
+}
+
+class Label {
+	constructor(name, count, id) {
+		this.name = name;
+		this.count = count;
+		this.id = id;
+	}
+
+	add() {
+		labels.push(this);
+		return this;
+	}
+
+	delete() {
+		// delete from labels array
+		labels = labels.filter(label => {
+			return this.name != label.name;
+		})
+		return this;
+	}
+
+	updateId(id) {
+		this.id = id;
+		return this;
+	}
+
+	updateCount(count) {
+		this.count = count;
+		return this;
+	}
+
+	render() {
+		console.log(this.name);
+		let labels_container = document.getElementById('labels_container');
+
+		labels_container.innerHTML += `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${this.name} style="display: inline-flex;">${this.name} (${this.count})<i class="close material-icons" style="padding: 0 0 0 10;color: black;" onclick="deleteLabel(event, ${this.name})">close</i>`;
+		return this;
+	}
+}
 
 async function toDatasetObject(dataset) {
 	const result = await Promise.all(
 		Object.entries(dataset).map(async ([classId, value], index) => {
 			const data = await value.data();
 			return {
-				classId: Number(classId),
-				// classId: classId,
+				// classId: Number(classId),
+				classId: classId,
 				data: Array.from(data),
 				shape: value.shape
 			};
@@ -24,16 +93,23 @@ async function toDatasetObject(dataset) {
 };
 
 function fromDatasetObject(datasetObject) {
-	return Object.entries(datasetObject).reduce((result, [indexString, { data, shape }]) => {
+	console.log('datasetObject:', datasetObject);
+	let test = Object.entries(datasetObject).reduce((result, [indexString, { data, shape }]) => {
 		const tensor = tf.tensor2d(data, shape);
 		const index = Number(indexString);
 
-		result[index] = tensor;
-		// console.log('fromDatasetObject:', result);
+		let label = datasetObject[indexString].classId;
+		result[label] = tensor;
+		// result[indexString] = tensor;
+		console.log('result:', result);
 		return result;
 	}, {});
-
+	console.log('test:', test)
+	return test;
 }
+
+const classifier = loadClassifierFromLocalStorage();
+const webcamElement = document.getElementById('webcam');
 
 async function app() {
 	// Load the model.
@@ -50,35 +126,31 @@ async function app() {
 		const img = await webcam.capture();
 		const activation = net.infer(img, 'conv_preds');
 
-		classifier.addExample(activation, classId);
-		label_count = classifier.getClassExampleCount()[classId];
+		let res = classifier.addExample(activation, label_name);
 
-		labels.forEach((value, index) => {
-			// console.log('value', value.name);
-			// console.log('index', index);
-			if (value.name === label_name) {
-				labels[index].classIndex = classId;
-				labels[index].count = label_count;
-			}
-		});
+		label_count = classifier.getClassExampleCount()[label_name];
+		console.log('label_count', label_count);
+
+		let [label] = labels.filter(l => {
+			return l.name === label_name;
+		})
+
+		label.updateCount(label_count)
+			.updateId(classId);
+
+		console.log('add exampe label:', label);
 		console.log('labels', labels);
 
 		// Update current model
-		updateClassifierInLocalStorage(event, classifier);
+		updateModel();
+		// updateClassifierInLocalStorage(event, classifier);
 
 		// Update label count
 		let labels_container = document.getElementById('labels_container');
 
-
 		labels_container.children[classId].innerHTML =
-			`${label_name} (${label_count}) <i class="close material-icons" style="
-		padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`
+			`${label_name} (${label_count}) <i class="close material-icons" style="padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`
 
-		// const dataset = classifier.getClassifierDataset();
-		// const datasetOjb = await toDatasetObject(dataset);
-
-		// console.log('datasetOjb:', datasetOjb);
-		// console.log(classifier.getClassExampleCount(classId)[classId]);
 		// Dispose the tensor to release the memory.
 		img.dispose();
 	};
@@ -88,13 +160,22 @@ async function app() {
 	document.getElementById('clearall').addEventListener('click', async () => clearAll(classifier));
 
 	// save model
-	document.getElementById('saveModel').addEventListener('click', (event) => saveClassifierInLocalStorage(event, classifier));
+	document.getElementById('saveModel').addEventListener('click', (event) => saveNewModel(event));
+
+	// load a saved model
+	document.getElementById('models_list').addEventListener('change', async function (event) {
+		console.log('e:', event.target.value);
+		getEl('labels_container').innerHTML = '';
+		await loadModel(event.target.value, classifier);
+	});
 
 	// label button click listener
 	document.getElementById('labels_container').addEventListener('click', (event) => {
 		if (event.target.classList.contains('btn')) {
 			let index;
 			let id = event.target.id;
+
+			console.log(classifier.getClassExampleCount());
 			// get index of the label
 			// console.log('Labels', labels);
 			labels.forEach((value, index) => {
@@ -114,83 +195,49 @@ async function app() {
 
 	document.getElementById('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
 
-	while (true) {
-		if (classifier.getNumClasses() > 0) {
-			const img = await webcam.capture();
-			// Get the activation from mobilenet from the webcam.
-			const activation = net.infer(img, 'conv_preds');
-			// Get the most likely class and confidences from the classifier module.
-			const result = await classifier.predictClass(activation);
-			let predictionTxt = '';
+	try {
+		while (true) {
+			if (classifier.getNumClasses() > 0) {
+				const img = await webcam.capture();
+				// Get the activation from mobilenet from the webcam.
+				const activation = net.infer(img, 'conv_preds');
+				// Get the most likely class and confidences from the classifier module.
+				const result = await classifier.predictClass(activation);
+				let predictionTxt = '';
 
-			// console.log(classifier.getClassExampleCount());
-			if (result.label !== undefined) {
+				if (Date.now() % 100 === 0) {
+					console.log(result);
+				}
+				// console.log(classifier.getClassExampleCount());
+				if (result.label !== undefined) {
 
-				labels.forEach((value, index) => {
-					// console.log(value.classIndex, Number(result.label));
-					if (value.classIndex === Number(result.label)) {
-						// classifier.clearClass(labels[index].classIndex);
-						// labels.splice(index, 1);
-						predictionTxt = `
-						<strong>${[value.name] || ''}</strong>
-						<div id="add_label_btn" class="btn btn-small blue-grey darken-3">${result.confidences[result.label].toFixed(2)}</div>
-						`
-						// updateClassifierInLocalStorage(event, classifier)
-					}
-				});
+					let [label] = labels.filter(l => {
+						return l.name == result.label;
+					})
 
-				// console.log(result);
+					let label_name = label ? label.name : '';
+					let confidence = result.confidences[result.label];
 
+					predictionTxt = `
+							<strong>${label_name}</strong>
+							<div id="add_label_btn" class="btn btn-small blue-grey darken-3">${confidence.toFixed(2)}</div>
+							`
+				}
+
+				document.getElementById('console').innerHTML = predictionTxt;
+				// Dispose the tensor to release the memory.
+				img.dispose();
 			}
 
-			document.getElementById('console').innerHTML = predictionTxt;
-			// Dispose the tensor to release the memory.
-			img.dispose();
+			await tf.nextFrame();
 		}
-
-		await tf.nextFrame();
+	} catch (err) {
+		console.log(err);
 	}
+
 }
 
-class Label {
-	constructor(name, count, id) {
-		this.name = name;
-		this.count = count;
-		this.id = id;
-	}
 
-	add() {
-		labels.push(this);
-		return this;
-	}
-
-	delete() {
-		// delete html
-		// delete from labels array
-		labels = labels.filter(label => {
-			return this.name != label.name;
-		})
-		return this;
-	}
-
-	updateId(id) {
-		this.id = id;
-		return this;
-	}
-
-	updateCount() {
-		this.count++;
-		return this;
-	}
-
-	render() {
-		console.log(this.name);
-		let labels_container = document.getElementById('labels_container');
-
-		labels_container.innerHTML += `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${this.name} style="display: inline-flex;">${this.name} (${this.count})<i class="close material-icons" style="padding: 0 0 0 10;color: black;" onclick="deleteLabel(event, ${this.name})">close</i>`;
-		return this;
-	}
-}
 
 function addNewLabel(event) {
 	event.preventDefault();
@@ -202,22 +249,42 @@ function addNewLabel(event) {
 	getEl('label_name').classList.remove('valid');
 }
 
-// function addLabelBtnClick(event) {
-// 	event.preventDefault();
-// 	let label_name = document.getElementById('label_name').value;
-// 	let label_count = 0;
+async function saveNewModel(event) {
+	event.preventDefault();
+	const dataset = classifier.getClassifierDataset();
+	const datasetOjb = await toDatasetObject(dataset);
 
-// 	if (label_name) {
-// 		let label = {
-// 			name: label_name,
-// 			count: label_count
-// 		};
-// 		labels.push(label);
-// 		renderLabel([label_name, label_count]);
-// 		document.getElementById('label_name').value = '';
-// 		document.getElementById('label_name').classList.remove('valid');
-// 	}
-// }
+	let model = new Model(getEl('model_name').value, labels, datasetOjb);
+	model.add();
+
+	modelDB.current = model.name;
+	modelDB.models = models;
+
+	console.log(modelDB);
+	saveClassifierInLocalStorage(modelDB);
+}
+
+async function updateModel() {
+	// event.preventDefault();
+	if (modelDB.current) {
+		console.log('before:', modelDB);
+		const dataset = classifier.getClassifierDataset();
+		const datasetOjb = await toDatasetObject(dataset);
+
+		let [model] = models.filter(m => {
+			return m.name === modelDB.current;
+		})
+
+		console.log('datasetOjb:', datasetOjb, model);
+		model.update(labels, datasetOjb);
+
+		modelDB.models = models;
+		saveClassifierInLocalStorage(modelDB);
+		console.log('after:', modelDB);
+	} else {
+		console.log('no models saved:', modelDB);
+	}
+}
 
 function renderLabel(label) {
 
@@ -229,21 +296,31 @@ function renderLabel(label) {
 
 }
 
-function deleteLabel(event, labelName) {
-	
+function deleteLabel(event) {
+
 	let name = event.target.parentElement.id;
-	let labelInstance = labels.filter(l => {
+	let [label] = labels.filter(l => {
 		return l.name === name;
 	})
-	
-	console.log(labelInstance);
 
-	if (labelInstance[0].id) {
-		classifier.clearClass(labelInstance[0].id);
+	console.log('deleting: ', label.id, name);
+
+	if (label.count > 0) {
+		classifier.clearClass(name);
 	}
+	// if (label.id !== undefined) {
+	// 	console.log('clearing: ', label.id);
+	// 	classifier.clearClass(label.id);
+	// } else {
+	// 	console.log('else: ', label.id);
+	// }
 
-	labelInstance[0].delete();
-	updateClassifierInLocalStorage(event, classifier);
+	label.delete();
+	let labels_container = event.target.parentElement.parentElement;
+	labels_container.removeChild(getEl(name));
+
+	// updateClassifierInLocalStorage(event, classifier);
+	updateModel();
 }
 
 async function clearAll(classifier) {
@@ -257,108 +334,100 @@ async function clearSavedData(event) {
 	localStorage.setItem(storageKey, jsonStr);
 }
 
-async function saveClassifierInLocalStorage(event, classifier) {
-
-	event.preventDefault();
-	let model_name = document.getElementById('model_name').value;
-
-	if (model_name) {
-		console.log('saving...' + model_name);
-		const dataset = classifier.getClassifierDataset();
-		const datasetOjb = await toDatasetObject(dataset);
-
-		console.log(classifier.getClassExampleCount(), models);
-
-		let model_data = {
-			name: model_name,
-			// labels: classifier.getClassExampleCount(),
-			labels: labels,
-			model: datasetOjb
-		}
-
-		models[model_name] = model_data;
-		models.current = model_name;
-
-		console.log('models:', models);
-		const jsonStr = JSON.stringify(models);
-		let res = localStorage.setItem(storageKey, jsonStr);
-		console.log('res', res);
-	} else {
-		console.log('model name cannot be empty');
-	}
+async function saveClassifierInLocalStorage(dataToSave) {
+	const jsonStr = JSON.stringify(dataToSave);
+	localStorage.setItem(storageKey, jsonStr);
 }
 
-async function updateClassifierInLocalStorage(event, classifier) {
-	event.preventDefault();
-	let model_name = models.current;
+// async function updateClassifierInLocalStorage(event, classifier) {
+// 	event.preventDefault();
+// 	let model_name = models.current;
 
-	if (model_name) {
-		console.log('updating...' + model_name);
-		const dataset = classifier.getClassifierDataset();
-		const datasetOjb = await toDatasetObject(dataset);
+// 	if (model_name) {
+// 		console.log('updating...' + model_name);
+// 		const dataset = classifier.getClassifierDataset();
+// 		const datasetOjb = await toDatasetObject(dataset);
 
-		console.log(classifier.getClassExampleCount(), models);
+// 		let model_data = {
+// 			name: model_name,
+// 			// labels: classifier.getClassExampleCount(),
+// 			labels: labels,
+// 			model: datasetOjb
+// 		}
 
-		let model_data = {
-			name: model_name,
-			// labels: classifier.getClassExampleCount(),
-			labels: labels,
-			model: datasetOjb
-		}
+// 		models[model_name] = model_data;
+// 		models.current = model_name;
 
-		models[model_name] = model_data;
-		models.current = model_name;
-
-		console.log('models:', models);
-		const jsonStr = JSON.stringify(models);
-		localStorage.setItem(storageKey, jsonStr);
-	} else {
-		console.log('no model  name to update');
-	}
-}
+// 		console.log('updated models:', models);
+// 		const jsonStr = JSON.stringify(models);
+// 		localStorage.setItem(storageKey, jsonStr);
+// 	} else {
+// 		console.log('no model  name to update');
+// 	}
+// }
 
 function loadClassifierFromLocalStorage() {
-	console.log('loading...');
+
 	const classifier = new knnClassifier.KNNClassifier();
 
 	let saved_data = localStorage.getItem(storageKey);
-	// console.log(saved_data);
+	saved_data = JSON.parse(saved_data);
+	console.log(saved_data);
 
-	if (saved_data) {
-		saved_data = JSON.parse(saved_data);
+	if (saved_data && saved_data.models) {
 
-		models = saved_data ? saved_data : {};
-		console.log(models);
+		saved_data.models.forEach(data => {
+			let model = new Model(data.name, data.labels, data.model);
+			model.add();
 
-		if (models && models.current) {
-			loadModel(classifier, models.current);
-		}
+			if (models && saved_data.current && saved_data.current === model.name) {
+				console.log('loading model - ', model.name)
+				modelDB.current = saved_data.current;
+				loadModel(saved_data.current, classifier);
+			}
+		})
+
+		modelDB.models = models;
+		console.log('modelDB: Updated - ', modelDB);
 	}
 	return classifier;
 }
 
-function loadModel(classifier, model_name) {
-	console.log('loading ', model_name);
+function loadModel(model_name, classifier) {
 
-	// get model
-	const dataset = fromDatasetObject(models[model_name].model);
-	// update classifier
-	classifier.setClassifierDataset(dataset);
-	// update labels
-	labels = models[model_name].labels;
+	try {
 
 
-	// render labels
-	document.getElementById('labels_container').innerHTML = '';
-	labels.forEach((value, index) => {
-		renderLabel(value);
-	});
+		labels = [];
 
-	// update current model name
-	models.current = model_name;
-	// update models on local storage
-	const jsonStr = JSON.stringify(models);
-	localStorage.setItem(storageKey, jsonStr);
+		let [model] = models.filter(m => {
+			return m.name === model_name;
+		})
+
+		// if (!classifier) {
+		// 	console.log('no classifier');
+		// 	classifier = new knnClassifier.KNNClassifier();
+		// }
+
+		console.log('loading ', model_name, model);
+		// get model
+		const dataset = fromDatasetObject(model.model);
+		// update classifier
+		classifier.setClassifierDataset(dataset);
+
+		model.labels.forEach(label => {
+			// let label = new Label(l.name, l.count, l.id);
+			label.add().render();
+		});
+
+		console.log('loaded model', model);
+		console.log('loaded labels', labels);
+		// update current model name
+		modelDB.current = model_name;
+
+	} catch (error) {
+		console.log('error: ', error);
+	}
 }
 
 function getEl(elementId) {

@@ -18,6 +18,9 @@
 	<script src="js/knn-classifier.min.js"></script>
 
 	<style>
+		#preloader_container {
+			min-height: 20px;
+		}
 		#console {
 			min-height: 60px;
 			color: whitesmoke;
@@ -121,6 +124,12 @@
 
 	<div class="container">
 		<!-- Page Content goes here -->
+		<div id="preloader_container">
+			<div id="preloader" class="progress">
+				<div class="indeterminate blue-grey lighten-2"></div>
+			</div>
+		</div>
+
 		<div class="row">
 			<div class="input-field col s12">
 				<select id="models_list">
@@ -136,9 +145,9 @@
 		<div id="console" class="center-align">
 			<div class="row">
 			</div>
-			<div id="preloader" class="progress">
+			<!-- <div id="preloader" class="progress">
 				<div class="indeterminate blue-grey lighten-2"></div>
-			</div>
+			</div> -->
 		</div>
 
 		<div class="row center-align" id="video_container">
@@ -157,7 +166,7 @@
 			</div>
 
 
-			
+
 
 			<div class="row">
 
@@ -214,37 +223,21 @@
 
 			// var elems = document.querySelectorAll('.dropdown-trigger');
 			// var instances = M.Dropdown.init(elems, {});
-			console.log('M:', models);
+			// console.log('M:', models);
 			var elems = document.querySelectorAll('select');
 			// var instances = M.FormSelect.init(elems, {});
 			renderModelSelect(models);
 			var instances = M.FormSelect.init(elems, {});
-	
+
 			// document.getElementById('models_list').change(function () {
-				// });
+			// });
 		});
-
-		document.getElementById('models_list').addEventListener('change', function (event) {
-
-			console.log('e:', event.target.value);
-			loadModel(classifier, event.target.value)
-		});
-
-		
 
 		function renderModelSelect(models) {
-			models_arr = Object.keys(models);
-
-			if (models_arr.length) {
-				models_arr.map(m => {
-					if (m !== 'current') {
-
-						if (models.current === m) {
-							document.getElementById('models_list').innerHTML += `<option selected value="${m}">${m}</option>`
-						} else {
-							document.getElementById('models_list').innerHTML += `<option value="${m}">${m}</option>`
-						}
-					}
+			
+			if (models.length > 0) {
+				models.map(model => {
+					getEl('models_list').innerHTML += `<option selected value="${model.name}">${model.name}</option>`
 				})
 			} else {
 				document.getElementById('models_list').innerHTML += `<option class="white-text" value="">No models saved</option>`
