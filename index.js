@@ -108,6 +108,26 @@ function fromDatasetObject(datasetObject) {
 	return test;
 }
 
+async function setupWebcam() {
+	console.log('setting up video');
+	return new Promise((resolve, reject) => {
+		const navigatorAny = navigator;
+		navigator.getUserMedia = navigator.getUserMedia ||
+			navigatorAny.webkitGetUserMedia || navigatorAny.mozGetUserMedia ||
+			navigatorAny.msGetUserMedia;
+		if (navigator.getUserMedia) {
+			navigator.getUserMedia({ video: true },
+				stream => {
+					webcamElement.srcObject = stream;
+					webcamElement.addEventListener('loadeddata', () => resolve(), false);
+				},
+				error => reject());
+		} else {
+			reject();
+		}
+	});
+}
+
 const classifier = loadClassifierFromLocalStorage();
 const webcamElement = document.getElementById('webcam');
 
@@ -115,6 +135,8 @@ async function app() {
 	// Load the model.
 	net = await mobilenet.load();
 	console.log('Successfully loaded mobilenet');
+	await setupWebcam();
+
 	const webcam = await tf.data.webcam(webcamElement);
 	document.getElementById('preloader').classList.add('hide');
 	console.log('Successfully loaded video');
@@ -166,7 +188,7 @@ async function app() {
 	document.getElementById('models_list').addEventListener('change', async function (event) {
 		console.log('e:', event.target.value);
 		getEl('labels_container').innerHTML = '';
-		await loadModel(event.target.value, classifier);
+		loadModel(event.target.value, classifier);
 	});
 
 	// label button click listener
@@ -206,7 +228,7 @@ async function app() {
 				let predictionTxt = '';
 
 				if (Date.now() % 100 === 0) {
-					console.log(result);
+					// console.log(result);
 				}
 				// console.log(classifier.getClassExampleCount());
 				if (result.label !== undefined) {
@@ -261,7 +283,7 @@ async function saveNewModel(event) {
 	modelDB.models = models;
 
 	console.log(modelDB);
-	saveClassifierInLocalStorage(modelDB);
+	saveToLocalStorage(modelDB);
 }
 
 async function updateModel() {
@@ -279,7 +301,7 @@ async function updateModel() {
 		model.update(labels, datasetOjb);
 
 		modelDB.models = models;
-		saveClassifierInLocalStorage(modelDB);
+		saveToLocalStorage(modelDB);
 		console.log('after:', modelDB);
 	} else {
 		console.log('no models saved:', modelDB);
@@ -334,7 +356,7 @@ async function clearSavedData(event) {
 	localStorage.setItem(storageKey, jsonStr);
 }
 
-async function saveClassifierInLocalStorage(dataToSave) {
+async function saveToLocalStorage(dataToSave) {
 	const jsonStr = JSON.stringify(dataToSave);
 	localStorage.setItem(storageKey, jsonStr);
 }
@@ -404,11 +426,6 @@ function loadModel(model_name, classifier) {
 			return m.name === model_name;
 		})
 
-		// if (!classifier) {
-		// 	console.log('no classifier');
-		// 	classifier = new knnClassifier.KNNClassifier();
-		// }
-
 		console.log('loading ', model_name, model);
 		// get model
 		const dataset = fromDatasetObject(model.model);
@@ -422,9 +439,13 @@ function loadModel(model_name, classifier) {
 
 		console.log('loaded model', model);
 		console.log('loaded labels', labels);
+
+		toast(`${model.name} is loaded!`);
 		// update current model name
 		modelDB.current = model_name;
+		modelDB.models = models;
 
+		saveToLocalStorage(modelDB);
 	} catch (error) {
 		console.log('error: ', error);
 	}
@@ -432,6 +453,10 @@ function loadModel(model_name, classifier) {
 
 function getEl(elementId) {
 	return document.getElementById(elementId);
+}
+
+function toast(message) {
+	M.toast({html: message});
 }
 
 // function loadClassifierFromLocalStorage() {
@@ -449,6 +474,6 @@ function getEl(elementId) {
 // 	return classifier;
 // }
 
-
-
-app();
+window.onload = () => {
+	app();
+}
