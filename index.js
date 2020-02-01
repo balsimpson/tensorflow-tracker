@@ -308,6 +308,42 @@ async function saveNewModel(event) {
 	saveToLocalStorage(modelDB);
 }
 
+function loadModel(model_name, classifier) {
+
+	try {
+
+
+		labels = [];
+
+		let [model] = models.filter(m => {
+			return m.name === model_name;
+		})
+
+		// console.log('loading ', model_name, model);
+		// get model
+		const dataset = fromDatasetObject(model.model);
+		// update classifier
+		classifier.setClassifierDataset(dataset);
+
+		model.labels.forEach(label => {
+			// let label = new Label(l.name, l.count, l.id);
+			label.add().render();
+		});
+
+		// console.log('loaded model', model);
+		// console.log('loaded labels', labels);
+
+		toast(`${model.name} is loaded!`);
+		// update current model name
+		modelDB.current = model_name;
+		modelDB.models = models;
+
+		saveToLocalStorage(modelDB);
+	} catch (error) {
+		console.log('error: ', error);
+	}
+}
+
 async function updateModel() {
 	// event.preventDefault();
 	if (modelDB.current) {
@@ -404,41 +440,7 @@ function loadClassifierFromLocalStorage() {
 	return classifier;
 }
 
-function loadModel(model_name, classifier) {
 
-	try {
-
-
-		labels = [];
-
-		let [model] = models.filter(m => {
-			return m.name === model_name;
-		})
-
-		// console.log('loading ', model_name, model);
-		// get model
-		const dataset = fromDatasetObject(model.model);
-		// update classifier
-		classifier.setClassifierDataset(dataset);
-
-		model.labels.forEach(label => {
-			// let label = new Label(l.name, l.count, l.id);
-			label.add().render();
-		});
-
-		// console.log('loaded model', model);
-		// console.log('loaded labels', labels);
-
-		toast(`${model.name} is loaded!`);
-		// update current model name
-		modelDB.current = model_name;
-		modelDB.models = models;
-
-		saveToLocalStorage(modelDB);
-	} catch (error) {
-		console.log('error: ', error);
-	}
-}
 
 function getEl(elementId) {
 	return document.getElementById(elementId);
