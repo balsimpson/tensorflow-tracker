@@ -155,7 +155,7 @@
 		});
 	</script>
 	<script>
-		
+
 		const storageKey = "knnClassifier";
 		let foundLabelData = {
 			date: '',
@@ -570,12 +570,17 @@
 			toStorage(modelBinding.get());
 		}
 
+		function getDate(timestamp) {
+			let d = new Date(timestamp);
+			return d.toLocaleDateString() + " " + d.toLocaleTimeString();
+		}
 		// log data to google sheets through stdlib
 		async function logData(data) {
 			// https://tinkr.api.stdlib.com/sheets@dev/add/?date=today%20date&duration=some%20duration
+
 			let save_data = {
 				fieldsets: [{
-					date: data.date,
+					date: getDate(data.date),
 					duration: data.duration,
 					cat: data.cat
 				}],
@@ -614,7 +619,7 @@
 
 			// console.log('log data:', options.body);
 			// let results = await makeHttpCall(options);
-			
+
 
 		}
 
