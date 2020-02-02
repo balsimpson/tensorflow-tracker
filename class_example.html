@@ -144,6 +144,8 @@
 	<script src="js/tf.min.js"></script>
 	<script src="js/mobilenet.min.js"></script>
 	<script src="js/knn-classifier.min.js"></script>
+	<!-- Axios -->
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
 	<script type="text/javascript" src="js/materialize.min.js"></script>
 	<script>
@@ -153,7 +155,15 @@
 		});
 	</script>
 	<script>
-		const storageKey = "knClassifier";
+		
+		const storageKey = "knnClassifier";
+		let foundLabelData = {
+			date: '',
+			duration: 0,
+			cat: ''
+		};
+
+		let ignoreLabelName = 'default';
 
 		class Models {
 			constructor(element) {
@@ -405,6 +415,26 @@
 
 		}
 
+		const makeHttpCall = async (options) => {
+			return new Promise((resolve) => {
+				var req = https.request(options, res => {
+					res.setEncoding('utf8');
+					var returnData = "";
+					res.on('data', chunk => {
+						returnData = returnData + chunk;
+					});
+					res.on('end', () => {
+						let results = JSON.parse(returnData);
+						// console.log(`results: ${JSON.stringify(results)}`);
+						resolve(results);
+					});
+				});
+				if (options.method == 'POST' || options.method == 'PATCH') {
+					req.write(JSON.stringify(options.body));
+				}
+				req.end();
+			})
+		}
 		// Dataset operations
 		async function toDatasetObject(dataset) {
 			const result = await Promise.all(
@@ -437,10 +467,13 @@
 
 		function fromStorage(key) {
 			let data = localStorage.getItem(key);
-			return JSON.parse(data);
+			let json = JSON.parse(data);
+			console.log('size:', memorySizeOf(json));
+			return json;
 		}
 
 		async function toStorage(dataToSave) {
+			console.log('save size:', memorySizeOf(dataToSave));
 			const jsonStr = JSON.stringify(dataToSave);
 			localStorage.setItem(storageKey, jsonStr);
 		}
@@ -524,7 +557,7 @@
 			labelBinding.load([]);
 			modelBinding.delete(modelBinding.current);
 
-			
+
 			let models = modelBinding.get().models;
 
 			if (models && models.length > 0) {
@@ -536,6 +569,110 @@
 			}
 			toStorage(modelBinding.get());
 		}
+
+		// log data to google sheets through stdlib
+		async function logData(data) {
+			// https://tinkr.api.stdlib.com/sheets@dev/add/?date=today%20date&duration=some%20duration
+			let save_data = {
+				fieldsets: [{
+					date: data.date,
+					duration: data.duration,
+					cat: data.cat
+				}],
+				range: 'log!A1:C',
+				spreadsheetId: '1a3N1uuV_BeDkNWRLYFrhHrt7T6IQs8GcjLUosdgLDxs'
+			}
+
+			axios({
+				url: 'https://tinkr.api.stdlib.com/sheets@dev/add/',
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json"
+				},
+				data: save_data
+			})
+				.then(result => {
+					console.log('result', result);
+					return result;
+				})
+
+			// let options = {
+			// 	host: 'tinkr.api.stdlib.com',
+			// 	path: '/sheets@dev/add/',
+			// 	method: 'POST',
+			// 	headers: {
+			// 		'content-type': 'application/json'
+			// 	},
+			// 	body: {
+			// 		date: data.date,
+			// 		duration: data.duration,
+			// 		cat: data.cat,
+			// 		range: 'log!A1:C',
+			// 		spreadsheetId: '1a3N1uuV_BeDkNWRLYFrhHrt7T6IQs8GcjLUosdgLDxs'
+			// 	}
+			// }
+
+			// console.log('log data:', options.body);
+			// let results = await makeHttpCall(options);
+			
+
+		}
+
+		// track label
+		function trackLabel(labelName) {
+			if (labelName === foundLabelData.cat) {
+				foundLabelData.duration = Date.now() - foundLabelData.date;
+			} else {
+				console.log(labelName, foundLabelData.cat);
+				if (foundLabelData.cat !== ignoreLabelName && foundLabelData.duration > (10 * 1000)) {
+					console.log(labelName);
+					logData(foundLabelData);
+				}
+				foundLabelData.date = Date.now();
+				foundLabelData.duration = 0;
+				foundLabelData.cat = labelName;
+			}
+			// console.log(foundLabelData);
+		}
+
+		function memorySizeOf(obj) {
+			var bytes = 0;
+
+			function sizeOf(obj) {
+				if (obj !== null && obj !== undefined) {
+					switch (typeof obj) {
+						case 'number':
+							bytes += 8;
+							break;
+						case 'string':
+							bytes += obj.length * 2;
+							break;
+						case 'boolean':
+							bytes += 4;
+							break;
+						case 'object':
+							var objClass = Object.prototype.toString.call(obj).slice(8, -1);
+							if (objClass === 'Object' || objClass === 'Array') {
+								for (var key in obj) {
+									if (!obj.hasOwnProperty(key)) continue;
+									sizeOf(obj[key]);
+								}
+							} else bytes += obj.toString().length * 2;
+							break;
+					}
+				}
+				return bytes;
+			};
+
+			function formatByteSize(bytes) {
+				if (bytes < 1024) return bytes + " bytes";
+				else if (bytes < 1048576) return (bytes / 1024).toFixed(0) + " KB";
+				else if (bytes < 1073741824) return (bytes / 1048576).toFixed(0) + " MB";
+				else return (bytes / 1073741824).toFixed(0) + " GB";
+			};
+
+			return formatByteSize(sizeOf(obj));
+		};
 
 		const classifier = new knnClassifier.KNNClassifier();
 		const webcamElement = document.getElementById('webcam');
@@ -624,7 +761,7 @@
 					} else if (event.target.classList.contains('close')) {
 						label_name = event.target.getAttribute('data-name');
 						let label_count = classifier.getClassExampleCount()[label_name];
-						
+
 						labelBinding.delete(label_name);
 
 						if (label_count > 0) {
@@ -663,7 +800,7 @@
 								</div>
 							
 							`
-
+							trackLabel(result.label);
 						}
 
 						document.getElementById('console').innerHTML = predictionTxt;
