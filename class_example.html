@@ -11,6 +11,11 @@
 	<title>Class Example</title>
 
 	<style>
+		.logo {
+			font-size: 24px;
+			padding-left: 8px;
+		}
+
 		#console {
 			min-height: 60px;
 		}
@@ -26,12 +31,18 @@
 	</style>
 </head>
 
-<body class="">
+<body class="teal darken-1">
 	<nav>
-		<div class="nav-wrapper teal darken-2">
+		<div class="nav-wrapper grey darken-3">
 			<div class="container">
-				<a href="#" class="brand-logo center"> trackr</a>
+				<span class="logo">trackr</span>
+				<ul class="right">
+					<li><a class="waves-effect waves-light btn btn-small white darken-4 teal-text">New Model <i
+								class="material-icons right">remove_red_eye</i></a>
+					</li>
+				</ul>
 			</div>
+		</div>
 		</div>
 	</nav>
 
@@ -40,101 +51,110 @@
 		<br>
 		<div class="row">
 			<div class="col s12 m6">
-				<div class="">
-
-					<div class="input-field">
-						<select id="model_list">
-							<!-- Models -->
-						</select>
-						<label>Current model</label>
-					</div>
-
-					<span class="card-title">Choose a model from the dropdown to load it. If you have not saved a model,
-						train with some labes and save it at the bottom of the page.</span>
-				</div>
-			</div>
-			<!-- <div class="col s12 m6">
-				<div class="card-panel teal">
-					<div class="">
-						<div class="input-field ">
-							<input placeholder="Name of the model" id="model_name" type="text" class="validate">
-						</div>
-						<button class="btn btn-small teal darken-4" id="saveModel">Save Model</button>
-					</div>
-				</div>
-			</div> -->
-		</div>
 
 
-		<div id="console" class="row center-align valign-wrapper">
-			<!-- Predictions -->
-		</div>
-
-		<div class="row center-align" id="video_container">
-			<div class="col s12">
-				<video class="z-depth-3" autoplay="" playsinline="" muted="" id="webcam" width="224"
-					height="224"></video>
-			</div>
-		</div>
-
-		<div class="row center-align">
-			<div class="col s12 m6" id="label_list">
-				<!-- Labels -->
-			</div>
-
-			<form id="add_label_form" class="col s12 m6">
 				<div class="input-field">
-					<input placeholder="Name of the label" id="label_name" type="text" class="validate center">
+					<select id="model_list">
+						<!-- Models -->
+					</select>
+					<label>Current model</label>
+					<span class="helper-text">Choose a model from the dropdown to load it.</span>
 				</div>
-				<button class="btn btn-small teal darken-3">Add Label</button>
-			</form>
-		</div>
 
-		<div class="row">
-			<div class="col s12">
-				<div class="card-panel teal">
-					<h5 class="white-text card-title" style="
-					margin-top: 0;">Save your model</h5>
-					<span class="white-text">Give your trained model a name and save it to local storage. Wil be loaded
-						automatically next time you open the page.
-					</span>
+				<br>
+				<div class="row">
+					<div class="col s12" id="label_list">
+						<!-- Labels -->
+					</div>
 
-					<form id="add_model_form">
-						<div class="">
-							<div class="input-field">
-								<input placeholder="Name of the model" id="model_name" type="text" class="validate">
-							</div>
+					<form id="add_label_form" class="col s12">
+						<div class="input-field">
+							<input placeholder="Name of the label" id="label_name" type="text" class="validate">
 						</div>
-						<div class="">
-							<button class="btn btn-small teal darken-4" id="saveModel">Save Model</button>
-						</div>
+						<button class="btn btn-small grey darken-3">Add Label</button>
 					</form>
 				</div>
+
+			</div>
+
+			<div class="col s12 m6">
+				<div class="card-panel grey darken-3">
+					<div id="console" class="row center-align valign-wrapper">
+						<!-- Predictions -->
+					</div>
+
+					<div class="row center-align" id="video_container">
+						<div class="col s12">
+							<video class="z-depth-3" autoplay="" playsinline="" muted="" id="webcam" width="224"
+								height="224"></video>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+
+
+
+
+
+		<div class="row">
+			<div class="col s12">
+				<div class="card-panel teal">
+
+					<div class="row">
+						<div class="col s12 m6">
+							<h5 class="white-text card-title" style="margin-top: 0;">Save your model</h5>
+							<span class="white-text">Give your trained model a name and save it to local storage. Wil be
+								loaded automatically next time you open the page.
+							</span>
+						</div>
+
+						<div class="col s12 m6">
+							<form id="add_model_form">
+								<div class="">
+									<div class="input-field">
+										<input placeholder="Name of the model" id="model_name" type="text"
+											class="validate">
+									</div>
+								</div>
+								<div class="">
+									<button class="btn btn-small teal darken-4" id="saveModel">Save Model</button>
+								</div>
+							</form>
+						</div>
+					</div>
+
+
+
+				</div>
 			</div>
 		</div>
 
 		<div class="row">
 			<div class="col s12">
 				<div class="card-panel red">
-					<h5 class="white-text card-title" style="
-					margin-top: 0;">Delete model</h5>
-					<div class="white-text">The currently loaded model and the associated labels will be deleted.
-					</div>
-					<br>
-					<button class="btn btn-small red darken-4" id="deleteModel">Delete Model</button>
-				</div>
-			</div>
-		</div>
+					<div class="row">
+						<div class="col s12 m6 center">
+							<div>
+								<button class="btn btn-small red darken-4" id="deleteModel">Delete Model</button>
+							</div>
+							<br>
+							<div class="white-text">Delete the currently loaded model and the associated labels.
+							</div>
+							<br>
+						</div>
 
-		<div class="row valign-wrapper">
-			<div class="col s12">
-				<div class="card-panel red">
-					<h5 class="white-text card-title" style="
-					margin-top: 0;">Delete saved data</h5>
-					<div class="white-text">Delete all data
+						<div class="col s12 m6 center">
+							<div>
+								<button class="btn btn-small red darken-4" id="deleteData">Delete Data</button>
+							</div>
+							<br>
+							<div class="white-text">Delete all data stored in local storage.
+							</div>
+						</div>
 					</div>
-					<br>
-					<button class="btn btn-small red darken-4" id="deleteData">Delete Data</button>
+
 				</div>
 			</div>
 		</div>
@@ -160,7 +180,7 @@
 		let foundLabelData = {
 			date: '',
 			duration: 0,
-			cat: ''
+			label: ''
 		};
 
 		let ignoreLabelName = 'default';
@@ -182,6 +202,7 @@
 
 					if (selected) {
 						console.log('model name', model.name);
+						optionItem.setAttribute('class', 'teal');
 						optionItem.setAttribute('selected', 'selected');
 					}
 				} else {
@@ -330,8 +351,7 @@
 			static createLabelItem(label) {
 				const labelBtn = document.createElement('button');
 				labelBtn.setAttribute('id', label.name);
-				labelBtn.setAttribute('class', 'btn btn-small btn-label waves-effect waves-light teal darken-1');
-
+				labelBtn.setAttribute('class', 'btn btn-small btn-label waves-effect waves-light grey darken-2');
 				labelBtn.setAttribute('style', 'display: inline-flex;');
 				// labelBtn.setAttribute('onclick', `labelBinding.count('${label.name}')`);
 				labelBtn.textContent = `${label.name} (${label.count})`;
@@ -340,7 +360,7 @@
 				labelClose.setAttribute('class', 'close material-icons');
 				labelClose.setAttribute('data-name', label.name);
 				labelClose.setAttribute('data-count', label.count);
-				labelClose.setAttribute('style', 'padding: 0 0 0 10;color: blue-grey lighten-1;');
+				labelClose.setAttribute('style', 'padding: 0 0 0 10;');
 				// labelClose.setAttribute('onclick', `labelBinding.delete('${label.name}')`);
 				labelClose.textContent = 'close';
 
@@ -570,9 +590,38 @@
 			toStorage(modelBinding.get());
 		}
 
+		function millisToDuration(millis, type) {
+			let minutes = Math.floor(millis / 60000);
+			let seconds = ((millis % 60000) / 1000).toFixed(0);
+			let response = '';
+
+			if (type === 'text') {
+				if (minutes > 0) {
+					let min = minutes > 1 ? 'minutes' : 'minute';
+					response += `${minutes} ${min}`
+				}
+
+				if (seconds > 0) {
+					let sec = seconds > 1 ? 'seconds' : 'second';
+					response += ` ${seconds} ${sec}`
+				}
+			} else {
+				if (minutes > 0) {
+					response += `${minutes} min `
+				}
+
+				if (seconds > 0) {
+					response += `${seconds} sec`
+				}
+			}
+
+			// console.log('duration', response);
+			return response;
+		}
+
 		function getDate(timestamp) {
 			let d = new Date(timestamp);
-			return d.toLocaleDateString() + " " + d.toLocaleTimeString();
+			return d.getMonth() + 1 + "/" + d.getDate() + "/" + d.getFullYear() + " " + d.toLocaleTimeString();
 		}
 		// log data to google sheets through stdlib
 		async function logData(data) {
@@ -582,9 +631,10 @@
 				fieldsets: [{
 					date: getDate(data.date),
 					duration: data.duration,
-					cat: data.cat
+					readable: millisToDuration(data.duration),
+					label: data.label
 				}],
-				range: 'log!A1:C',
+				range: 'log!A1:D',
 				spreadsheetId: '1a3N1uuV_BeDkNWRLYFrhHrt7T6IQs8GcjLUosdgLDxs'
 			}
 
@@ -625,17 +675,17 @@
 
 		// track label
 		function trackLabel(labelName) {
-			if (labelName === foundLabelData.cat) {
+			if (labelName === foundLabelData.label) {
 				foundLabelData.duration = Date.now() - foundLabelData.date;
 			} else {
-				console.log(labelName, foundLabelData.cat);
-				if (foundLabelData.cat !== ignoreLabelName && foundLabelData.duration > (10 * 1000)) {
+				console.log(labelName, foundLabelData.label);
+				if (foundLabelData.label !== ignoreLabelName && foundLabelData.duration > (10 * 1000)) {
 					console.log(labelName);
 					logData(foundLabelData);
 				}
 				foundLabelData.date = Date.now();
 				foundLabelData.duration = 0;
-				foundLabelData.cat = labelName;
+				foundLabelData.label = labelName;
 			}
 			// console.log(foundLabelData);
 		}
