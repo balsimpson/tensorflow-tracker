@@ -79,8 +79,8 @@
 			<div class="container">
 				<span class="logo">trackr</span>
 				<ul class="right">
-					<li><a id="new_model" class="waves-effect waves-light btn btn-small white darken-4 teal-text">New Model <i
-								class="material-icons right">remove_red_eye</i></a>
+					<li><a id="new_model" class="waves-effect waves-light btn btn-small white darken-4 teal-text">New
+							Model <i class="material-icons right">remove_red_eye</i></a>
 					</li>
 				</ul>
 			</div>
@@ -90,13 +90,19 @@
 
 	<main>
 
-
+		<div id="vid-controls">
+			<canvas id="cnv" width="300" height="300"></canvas>
+			<!-- <video class="z-depth-3 responsive-video" id="webcam"></video> -->
+			<video style="display: none" id="webcam" width="300" height="300" autoplay></video>
+			<input id="vid-take" type="button" value="Take Photo" />
+			<div id="vid-canvas"></div>
+		</div>
 		<div class="row center ">
 			<div class="col s12 m6 ">
 				<div class="card grey darken-4">
 					<div class="card-content white-text">
 						<!-- <span class="card-title">Card Title</span> -->
-						<video class="z-depth-3 responsive-video" id="webcam"></video>
+						<!-- <video class="z-depth-3 responsive-video" id="webcam"></video> -->
 						<!-- <video class="z-depth-3" autoplay="" playsinline="" muted="" id="webcam" width="224"
 							height="224"></video> -->
 					</div>

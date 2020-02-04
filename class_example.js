@@ -537,15 +537,19 @@ function memorySizeOf(obj) {
 };
 
 let classifier = new knnClassifier.KNNClassifier();
-const webcamElement = document.getElementById('webcam');
+// const webcamElement = document.getElementById('webcam');
+
+let canvas = document.getElementById("cnv");
+let ctx = canvas.getContext("2d");
+
+
+var videoImg = document.getElementById("vid-canvas");
 
 const modelList = document.getElementById('model_list');
 const modelBinding = new Models(modelList);
 
 const labelList = document.getElementById('label_list');
 const labelBinding = new Labels(labelList, modelBinding);
-
-
 
 async function setupWebcam() {
 	console.log('setting up video');
@@ -558,7 +562,7 @@ async function setupWebcam() {
 			navigator.getUserMedia({ video: true },
 				stream => {
 					webcamElement.srcObject = stream;
-					resolve(false, webcamElement);
+					resolve(webcamElement);
 					// webcamElement.addEventListener('model_list', () => resolve(), false);
 				},
 				error => reject());
@@ -625,17 +629,104 @@ function start() {
 		toStorage({});
 	});
 }
-
 let net;
+async function update() {
+	ctx.fillText('hello', 20, 20);
+	ctx.drawImage(video, 0, 0, 256, 256);
+
+	if (classifier.getNumClasses() > 0) {
+		// const img = await webcam.capture();
+		const img = grabScreenshot();
+		const activation = net.infer(img, 'conv_preds');
+		const result = await classifier.predictClass(activation);
+		let predictionTxt = '';
+		// console.log(classifier.getNumClasses());
+		if (result.label !== undefined) {
+
+			let confidence = result.confidences[result.label];
+
+			// confidence color
+			let btn_color = confidenceColor(confidence);
+
+			predictionTxt = `
+				<span id="label">${result.label}</span>
+				<span class="${btn_color}" id="confidence">${confidence.toFixed(2)}</span>`
+
+			trackLabel(result.label);
+		}
+
+		document.getElementById('console').innerHTML = predictionTxt;
+		// Dispose the tensor to release the memory.
+		// img.dispose();
+	}
+
+	await tf.nextFrame();
+
+	requestAnimationFrame(update); // wait for the browser to be ready to present another animation frame.       
+}
+
+
+
+let video = document.getElementById("webcam");
+// var video = document.querySelector("#videoElement");
+window.onload = (event) => {
+	console.log('page is fully loaded');
+	if (navigator.mediaDevices.getUserMedia) {
+		navigator.mediaDevices.getUserMedia({ video: true })
+			.then(function (stream) {
+				video.srcObject = stream;
+				app();
+			})
+			.catch(function (err0r) {
+				console.log("Something went wrong!");
+			});
+	}
+
+	video.addEventListener('loadeddata', function () {
+		// video.play();  // start playing
+		console.log('loaded')
+		update(); //Start rendering
+	});
+};
+
+function grabScreenshot() {
+	// ctx.drawImage(video, 0, 0, 300, 300);
+	let img = new Image();
+	img.src = canvas.toDataURL("image/png");
+	img.width = 240;
+	img.height = 240;
+	return img;
+}
+// window.onload = () => {
+// 	app();
+// }
+// navigator.getUserMedia({ video: true },
+// 	stream => {
+// 		video.srcObject = stream;
+// 	}, error => {
+// 		console.log('error:', error);
+// 	});
+
+
+
+
 async function app() {
 	start();
 	net = await mobilenet.load();
 
-	const webcam = await tf.data.webcam(webcamElement);
+	// video.src = "http://techslides.com/demos/sample-videos/small.mp4";
+
+
+
+	// const cam = await setupWebcam();
+	// const webcam = await tf.data.webcam(cam);
+	// console.log('webcam loaded', webcam);
 	// const webcam = await setupWebcam();
 
 	const addExample = async (labelName) => {
-		const img = await webcam.capture();
+		// const img = await webcam.capture();
+		const img = grabScreenshot();
+		// console.log(img);
 		const activation = net.infer(img, 'conv_preds');
 
 		classifier.addExample(activation, labelName);
@@ -645,7 +736,7 @@ async function app() {
 		updateModel(labelName);
 
 		// Dispose the tensor to release the memory.
-		img.dispose();
+		// img.dispose();
 	}
 
 	// label button click listener
@@ -672,42 +763,40 @@ async function app() {
 
 	});
 
-	try {
-		while (true) {
-			if (classifier.getNumClasses() > 0) {
-				const img = await webcam.capture();
-				const activation = net.infer(img, 'conv_preds');
-				const result = await classifier.predictClass(activation);
-				let predictionTxt = '';
-				// console.log(classifier.getNumClasses());
-				if (result.label !== undefined) {
+	// try {
+	// 	while (true) {
+	// 		// if (classifier.getNumClasses() > 0) {
+	// 		// 	// const img = await webcam.capture();
+	// 		// 	const img = grabScreenshot();
+	// 		// 	const activation = net.infer(img, 'conv_preds');
+	// 		// 	const result = await classifier.predictClass(activation);
+	// 		// 	let predictionTxt = '';
+	// 		// 	// console.log(classifier.getNumClasses());
+	// 		// 	if (result.label !== undefined) {
 
-					let confidence = result.confidences[result.label];
+	// 		// 		let confidence = result.confidences[result.label];
 
-					// confidence color
-					let btn_color = confidenceColor(confidence);
+	// 		// 		// confidence color
+	// 		// 		let btn_color = confidenceColor(confidence);
 
-					predictionTxt = `
-						<span id="label">${result.label}</span>
-						<span class="${btn_color}" id="confidence">${confidence.toFixed(2)}</span>`
-					
-					trackLabel(result.label);
-				}
+	// 		// 		predictionTxt = `
+	// 		// 			<span id="label">${result.label}</span>
+	// 		// 			<span class="${btn_color}" id="confidence">${confidence.toFixed(2)}</span>`
 
-				document.getElementById('console').innerHTML = predictionTxt;
-				// Dispose the tensor to release the memory.
-				img.dispose();
-			}
+	// 		// 		trackLabel(result.label);
+	// 		// 	}
 
-			await tf.nextFrame();
-		}
-	} catch (err) {
-		console.log(err);
-	}
+	// 		// 	document.getElementById('console').innerHTML = predictionTxt;
+	// 		// 	// Dispose the tensor to release the memory.
+	// 		// 	// img.dispose();
+	// 		// }
+
+	// 		// await tf.nextFrame();
+	// 	}
+	// } catch (err) {
+	// 	console.log(err);
+	// }
 
 
 }
 
-window.onload = () => {
-	app();
-}
