@@ -9,10 +9,12 @@ let ignoreLabelName = 'default';
 const sheetId = '1a3N1uuV_BeDkNWRLYFrhHrt7T6IQs8GcjLUosdgLDxs';
 
 class Models {
-	constructor(element) {
-		this.modelElement = element;
-		this.current = '';
+	constructor(modelElement, labelElement) {
+		this.modelElement = modelElement;
+		this.labelElement = labelElement;
 		this.models = [];
+		this.current = '';
+		this.sheetId = '';
 	}
 
 	/* makes a option tag */
@@ -20,7 +22,7 @@ class Models {
 		const optionItem = document.createElement('option');
 		if (model) {
 			optionItem.setAttribute('value', model.name);
-			optionItem.setAttribute('onclick', `modelBinding.loadModel('${model.name}')`);
+			optionItem.setAttribute('onclick', `modelDB.loadModel('${model.name}')`);
 			optionItem.textContent = `${model.name}`;
 
 			if (selected) {
@@ -38,14 +40,39 @@ class Models {
 		return optionItem;
 	}
 
-	add(modelName, modelLabels, modelData) {
+	/* makes a button tag */
+	static createLabelItem(label, modelName) {
+		console.log(label, modelName);
+		let labelName = label.classId;
+		let labelCount = label.shape[0];
+
+		const labelBtn = document.createElement('button');
+		labelBtn.setAttribute('id', labelName);
+		labelBtn.setAttribute('class', 'btn btn-small btn-label waves-effect waves-light grey darken-2');
+		labelBtn.setAttribute('style', 'display: inline-flex;');
+		// labelBtn.setAttribute('onclick', `labelBinding.count('${label.name}')`);
+		labelBtn.textContent = `${labelName} (${labelCount})`;
+
+		const labelClose = document.createElement('i');
+		labelClose.setAttribute('class', 'close material-icons');
+		labelClose.setAttribute('data-name', labelName);
+		labelClose.setAttribute('data-model', modelName);
+		labelClose.setAttribute('style', 'padding: 0 0 0 10;');
+		// labelClose.setAttribute('onclick', `labelBinding.delete('${label.name}')`);
+		labelClose.textContent = 'close';
+
+		labelBtn.appendChild(labelClose);
+
+		return labelBtn;
+	}
+
+	addModel(modelName, modelData) {
 		let [modelExists] = this.models.map(model => {
 			return (model.name === modelName) ? true : false;
 		});
 
 		let model = {
 			name: modelName,
-			labels: modelLabels,
 			model: modelData
 		}
 
@@ -67,28 +94,17 @@ class Models {
 			this.current = data.current;
 			this.models = data.models;
 
-			this.render();
+			let [model] = this.models.filter(m => {
+				return m.name === data.current;
+			})
+			this.renderModel();
+			this.renderLabel(model);
 			return this;
 		} else {
-			this.render();
+			this.renderModel();
+			this.renderLabel(model);
 			console.log('no saved data');
 		}
-
-	}
-
-	/* create saved data */
-	get() {
-		let data = {
-			current: this.current,
-			models: this.models
-		}
-
-		if (this.models.length > 0) {
-			return data;
-		} else {
-			return {};
-		}
-
 	}
 
 	loadModel(modelName) {
@@ -108,31 +124,35 @@ class Models {
 		return model;
 	}
 
-	updateModel(modelName, modelLabels, modelData) {
+	updateModel(modelName, modelData) {
 		let [model] = this.models.filter(m => {
 			if (m.name === modelName) {
-				m.labels = modelLabels;
 				m.model = modelData;
 				return m;
 			}
 		})
 		console.log('updated:', model);
+		this.renderModel();
+		this.renderLabel(model);
 		return this;
 	}
 
-	updateCurrentModelLabels(modelName, modelLabels) {
-		let [model] = this.models.filter(m => {
-			if (m.name === modelName) {
-				m.labels = modelLabels;
-				return m;
-			}
-		})
+	/* create saved data */
+	get() {
+		let data = {
+			current: this.current,
+			models: this.models
+		}
 
-		console.log(model);
-		return this;
+		if (this.models.length > 0) {
+			return data;
+		} else {
+			return {};
+		}
+
 	}
 
-	delete(modelName) {
+	deleteModel(modelName) {
 		this.models = this.models.filter(model => {
 			return model.name !== modelName;
 		})
@@ -140,7 +160,7 @@ class Models {
 		return this;
 	}
 
-	render() {
+	renderModel() {
 		/* Clear model items */
 		while (this.modelElement.firstChild) {
 			this.modelElement.removeChild(this.modelElement.firstChild);
@@ -160,6 +180,21 @@ class Models {
 		}
 		let elems = document.querySelectorAll('select');
 		let instances = M.FormSelect.init(elems, {});
+	}
+
+	renderLabel(modelData) {
+
+		console.log('data:', modelData);
+		/* Clear label items */
+		while (this.labelElement.firstChild) {
+			this.labelElement.removeChild(this.labelElement.firstChild);
+		}
+
+		/* Add buton tags for label items */
+		for (const label of modelData.model) {
+			console.log(label);
+			this.labelElement.appendChild(Models.createLabelItem(label, modelData.name))
+		}
 	}
 }
 
@@ -341,14 +376,7 @@ function getEl(elementId) {
 	return document.getElementById(elementId);
 }
 
-function addNewLabel(event) {
-	event.preventDefault();
-	let label_name = getEl('label_name').value;
-	getEl('add_label_form').reset();
-	labelBinding.add(label_name, 0, '');
-	console.log(label_name);
-	toStorage(modelBinding.get());
-}
+
 
 async function saveNewModel(event) {
 	event.preventDefault();
@@ -358,39 +386,39 @@ async function saveNewModel(event) {
 	let model_labels = labelBinding.list;
 	const model_data = await toDatasetObject(dataset);
 
-	modelBinding.add(model_name, model_labels, model_data);
+	modelDB.add(model_name, model_labels, model_data);
 	getEl('model_name').value = '';
-	toStorage(modelBinding.get());
+	toStorage(modelDB.get());
 }
 
 async function updateModel(label_name) {
 	const dataset = classifier.getClassifierDataset();
 	const datasetObj = await toDatasetObject(dataset);
 
-	let model_name = modelBinding.current;
+	let model_name = modelDB.current;
 	labelBinding.count(label_name);
-	modelBinding.updateModel(model_name, labelBinding.list, datasetObj);
+	modelDB.updateModel(model_name, labelBinding.list, datasetObj);
 
-	toStorage(modelBinding.get());
+	toStorage(modelDB.get());
 }
 
 async function deleteModel() {
 	classifier.clearAllClasses();
 
 	labelBinding.load([]);
-	modelBinding.delete(modelBinding.current);
+	modelDB.delete(modelDB.current);
 
 
-	let models = modelBinding.get().models;
+	let models = modelDB.get().models;
 
 	if (models && models.length > 0) {
-		modelBinding.current = models[0].model.name;
+		modelDB.current = models[0].model.name;
 		const dataset = fromDatasetObject(models[0].model);
 		classifier.setClassifierDataset(dataset);
 		labelBinding.load(models[0].labels);
 		console.log('deleted model');
 	}
-	toStorage(modelBinding.get());
+	toStorage(modelDB.get());
 }
 
 function millisToDuration(millis, type) {
@@ -539,13 +567,31 @@ function memorySizeOf(obj) {
 let classifier = new knnClassifier.KNNClassifier();
 const webcamElement = document.getElementById('webcam');
 
-const modelList = document.getElementById('model_list');
-const modelBinding = new Models(modelList);
+const modelEl = document.getElementById('model_list');
+const labelEl = document.getElementById('label_list');
+const modelDB = new Models(modelEl, labelEl);
 
-const labelList = document.getElementById('label_list');
-const labelBinding = new Labels(labelList, modelBinding);
+function addNewLabel(event) {
+	event.preventDefault();
+	let label_name = getEl('label_name').value;
+	getEl('add_label_form').reset();
+
+	let label_data = {
+		model: [{
+			classId: label_name,
+			shape: [0]
+		}]
+	}
 
 
+	Models.createLabelItem({
+		classId: label_name,
+		shape: [0]
+	}, '');
+	modelDB.renderLabel(label_data);
+	console.log(label_name);
+	// toStorage(modelDB.get());
+}
 
 async function setupWebcam() {
 	console.log('setting up video');
@@ -572,17 +618,17 @@ function start() {
 	let data = fromStorage(storageKey);
 	console.log('saved data:', data);
 	if (data && data.current && data.models.length > 0) {
-		modelBinding.load(data);
+		modelDB.load(data);
 		// setupWebcam();
-		let model = modelBinding.getCurrentModel();
+		let model = modelDB.getCurrentModel();
 		// console.log('model:', model);
 
 		const dataset = fromDatasetObject(model.model);
 		classifier.setClassifierDataset(dataset);
-		labelBinding.load(model.labels);
+		// labelBinding.load(model.labels);
 	} else {
 		console.log('no data to load');
-		modelBinding.load({});
+		modelDB.load({});
 	}
 
 	// add new label
@@ -606,8 +652,8 @@ function start() {
 
 	// load saved model
 	getEl('model_list').addEventListener('change', async function (event) {
-		let model = modelBinding.loadModel(event.target.value);
-		labelBinding.load(modelBinding.getCurrentModel().labels);
+		let model = modelDB.loadModel(event.target.value);
+		labelBinding.load(modelDB.getCurrentModel().labels);
 
 		// get model
 		const dataset = fromDatasetObject(model.model);
@@ -642,29 +688,34 @@ async function app() {
 
 		console.log('adding example', labelName);
 		// Update model
-		updateModel(labelName);
+		const dataset = classifier.getClassifierDataset();
+		const datasetObj = await toDatasetObject(dataset);
+
+		modelDB.updateModel(modelDB.current, datasetObj);
 
 		// Dispose the tensor to release the memory.
 		img.dispose();
 	}
 
 	// label button click listener
-	getEl('label_list').addEventListener('click', (event) => {
+	getEl('label_list').addEventListener('click', async (event) => {
 		try {
-			let label_name = '';
+			let label_name = event.target.id;
 			if (event.target.classList.contains('btn')) {
-				label_name = event.target.id;
 				addExample(label_name);
 			} else if (event.target.classList.contains('close')) {
 				label_name = event.target.getAttribute('data-name');
 				let label_count = classifier.getClassExampleCount()[label_name];
-
-				labelBinding.delete(label_name);
+				let modelName = event.target.getAttribute('data-model');
 
 				if (label_count > 0) {
 					classifier.clearClass(label_name);
 				}
-				updateModel(label_name);
+
+				const dataset = classifier.getClassifierDataset();
+				const datasetObj = await toDatasetObject(dataset);
+
+				modelDB.updateModel(modelName, datasetObj);
 			}
 		} catch (error) {
 			console.log('error:', error);
@@ -690,7 +741,7 @@ async function app() {
 					predictionTxt = `
 						<span id="label">${result.label}</span>
 						<span class="${btn_color}" id="confidence">${confidence.toFixed(2)}</span>`
-					
+
 					trackLabel(result.label);
 				}
 
