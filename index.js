@@ -75,57 +75,30 @@ class Label {
 	}
 }
 
-async function toDatasetObject(dataset) {
-	const result = await Promise.all(
-		Object.entries(dataset).map(async ([classId, value], index) => {
-			const data = await value.data();
-			return {
-				// classId: Number(classId),
-				classId: classId,
-				data: Array.from(data),
-				shape: value.shape
-			};
-		})
-	);
-	// console.log('toDatasetObject:', result);
-	return result;
+const capture = () => {
+	// add canvas element
+	const canvas = document.createElement('canvas');
+	document.querySelector('body').appendChild(canvas);
+
+	// set canvas dimensions to video ones to not truncate picture
+	const videoElement = document.querySelector('#webcam');
+	canvas.width = videoElement.width;
+	canvas.height = videoElement.height;
+
+	// copy full video frame into the canvas
+	canvas.getContext('2d').drawImage(videoElement, 0, 0, videoElement.width, videoElement.height);
+
+	// get image data URL and remove canvas
+	const snapshot = canvas.toDataURL("image/png");
+	canvas.parentNode.removeChild(canvas);
+
+	const img = document.createElement('img');
+	img.setAttribute('src', snapshot);
+	document.querySelector('#confusion_matrix').appendChild(img);
+	// console.log(snapshot);
+	// update grid picture source
+	// document.querySelector;
 };
-
-function fromDatasetObject(datasetObject) {
-	// console.log('datasetObject:', datasetObject);
-	let test = Object.entries(datasetObject).reduce((result, [indexString, { data, shape }]) => {
-		const tensor = tf.tensor2d(data, shape);
-		const index = Number(indexString);
-
-		let label = datasetObject[indexString].classId;
-		result[label] = tensor;
-		// result[indexString] = tensor;
-		// console.log('result:', result);
-		return result;
-	}, {});
-	// console.log('test:', test)
-	return test;
-}
-
-async function setupWebcam() {
-	console.log('setting up video');
-	return new Promise((resolve, reject) => {
-		const navigatorAny = navigator;
-		navigator.getUserMedia = navigator.getUserMedia ||
-			navigatorAny.webkitGetUserMedia || navigatorAny.mozGetUserMedia ||
-			navigatorAny.msGetUserMedia;
-		if (navigator.getUserMedia) {
-			navigator.getUserMedia({ video: true },
-				stream => {
-					webcamElement.srcObject = stream;
-					webcamElement.addEventListener('loadeddata', () => resolve(), false);
-				},
-				error => reject());
-		} else {
-			reject();
-		}
-	});
-}
 
 const classifier = loadClassifierFromLocalStorage();
 const webcamElement = document.getElementById('webcam');
@@ -134,11 +107,11 @@ async function app() {
 	// Load the model.
 	net = await mobilenet.load();
 	console.log('Successfully loaded mobilenet');
-	await setupWebcam();
 
 	const webcam = await tf.data.webcam(webcamElement);
-	document.getElementById('preloader').classList.add('hide');
 	console.log('Successfully loaded video');
+
+	getEl('preloader').classList.add('hide');
 
 	let label_count = 0;
 
@@ -147,7 +120,7 @@ async function app() {
 		const img = await webcam.capture();
 		const activation = net.infer(img, 'conv_preds');
 
-		let res = classifier.addExample(activation, label_name);
+		classifier.addExample(activation, label_name);
 
 		label_count = classifier.getClassExampleCount()[label_name];
 		// console.log('label_count', label_count);
@@ -158,9 +131,6 @@ async function app() {
 
 		label.updateCount(label_count)
 			.updateId(classId);
-
-		// console.log('add exampe label:', label);
-		// console.log('labels', labels);
 
 		// Update current model
 		updateModel();
@@ -178,30 +148,26 @@ async function app() {
 
 
 	// Clear all labels from current model
-	document.getElementById('clearall').addEventListener('click', async () => clearAll(classifier));
+	getEl('clearall').addEventListener('click', async () => clearAll(classifier));
 
-	// save model
-	document.getElementById('saveModel').addEventListener('click', (event) => saveNewModel(event));
+	// delete all data saved in local storage
+	getEl('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
+
+	// save a model with name
+	getEl('add_model_form').addEventListener('submit', (event) => saveNewModel(event));
 
 	// load a saved model
-	document.getElementById('models_list').addEventListener('change', async function (event) {
+	getEl('models_list').addEventListener('change', async function (event) {
 		console.log('e:', event.target.value);
 		getEl('labels_container').innerHTML = '';
 		loadModel(event.target.value, classifier);
 	});
 
 	// label button click listener
-	document.getElementById('labels_container').addEventListener('click', (event) => {
+	getEl('labels_container').addEventListener('click', (event) => {
 		if (event.target.classList.contains('btn')) {
-			let index;
 			let id = event.target.id;
-
-			// console.log(classifier.getClassExampleCount());
-			// get index of the label
-			// console.log('Labels', labels);
 			labels.forEach((value, index) => {
-				// console.log('value', value.name);
-				// console.log('index', index);
 				if (value.name === id) {
 					addExample(index, id);
 				}
@@ -209,22 +175,25 @@ async function app() {
 		}
 	});
 
-	// document.getElementById('getModel').addEventListener('click', (e) => loadClassifierFromLocalStorage());
+	getEl('add_label_form').addEventListener('submit', (event) => addNewLabel(event));
 
-	document.getElementById('add_label_form').addEventListener('submit', (event) => addNewLabel(event));
-	document.getElementById('add_label_btn').addEventListener('click', (event) => addNewLabel(event));
+	// prediction elements
+	let predictions = document.getElementById('console');
+	let labelEl = document.getElementById('label');
+	let confidenceEl = document.getElementById('confidence');
 
-	document.getElementById('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
-
+	let confusionEl = document.getElementById('confusion_matrix');
+	console.log(confusionEl.children.length);
 	try {
 		while (true) {
 			if (classifier.getNumClasses() > 0) {
 				const img = await webcam.capture();
+
 				// Get the activation from mobilenet from the webcam.
 				const activation = net.infer(img, 'conv_preds');
 				// Get the most likely class and confidences from the classifier module.
 				const result = await classifier.predictClass(activation);
-				let predictionTxt = '';
+
 
 				if (Date.now() % 100 === 0) {
 					// console.log(result);
@@ -240,35 +209,19 @@ async function app() {
 					let confidence = result.confidences[result.label];
 
 					// confidence color
-					let btn_color = 'blue-grey';
+					let btn_color = getBtnColor(confidence);
 
-					if (typeof confidence === 'number') {
-						if (confidence > 0.70) {
-							btn_color = 'teal';
-						} else if (confidence > 0.5 && confidence < 0.70) {
-							btn_color = 'deep orange';
-						} else if (confidence < 0.50) {
-							btn_color = 'red';
-						}
-					}
+					predictions.setAttribute('style', 'display: block;')
+					labelEl.innerHTML = label_name;
+					confidenceEl.innerHTML = (confidence * 100).toFixed(0) + '%';
+					confidenceEl.setAttribute('style', `color: ${btn_color};`);
 
-					predictionTxt = `
-					<div class="row valign-wrapper">
-						<div class="col s6 right-align">
-							<strong>${label_name}</strong>
-						</div>
-						<div class="col s6 left-align">
-							<div class="btn btn-small ${btn_color} darken-3">${confidence.toFixed(2)}</div>
-						</div>
-					</div>
-					`
-					// predictionTxt = `
-					// 		<strong>${label_name}</strong>
-					// 		<div class="btn btn-small ${btn_color} darken-3">${confidence.toFixed(2)}</div>
-					// 		`
+					// if (confidence < 1 && confusionEl.children.length < 6) {
+					// 	capture();
+					// }
 				}
 
-				document.getElementById('console').innerHTML = predictionTxt;
+				// document.getElementById('console').innerHTML = predictionTxt;
 				// Dispose the tensor to release the memory.
 				img.dispose();
 			}
@@ -283,29 +236,61 @@ async function app() {
 
 
 
+function getBtnColor(confidence) {
+
+	if (typeof confidence === 'number') {
+		if (confidence > 0.70) {
+			btn_color = 'teal';
+		}
+		else if (confidence > 0.5 && confidence < 0.70) {
+			btn_color = 'orange';
+		}
+		else if (confidence < 0.50) {
+			btn_color = 'red';
+		}
+	}
+
+	// console.log(btn_color);
+	return btn_color;
+}
+
 function addNewLabel(event) {
 	event.preventDefault();
 	let label_name = getEl('label_name').value;
-	let label = new Label(label_name, 0, '');
-	label.add().render();
 
-	getEl('label_name').value = '';
-	getEl('label_name').classList.remove('valid');
+	if (label_name) {
+		let label = new Label(label_name, 0, '');
+		label.add().render();
+
+		getEl('label_name').value = '';
+		getEl('label_name').classList.remove('valid');
+	} else {
+		console.log('label name is empty');
+	}
 }
 
 async function saveNewModel(event) {
 	event.preventDefault();
-	const dataset = classifier.getClassifierDataset();
-	const datasetOjb = await toDatasetObject(dataset);
+	let model_name = getEl('model_name').value;
 
-	let model = new Model(getEl('model_name').value, labels, datasetOjb);
-	model.add();
+	if (model_name) {
+		const dataset = classifier.getClassifierDataset();
+		const datasetOjb = await toDatasetObject(dataset);
 
-	modelDB.current = model.name;
-	modelDB.models = models;
+		let model = new Model(model_name, labels, datasetOjb);
+		model.add();
 
-	// console.log(modelDB);
-	saveToLocalStorage(modelDB);
+		modelDB.current = model.name;
+		modelDB.models = models;
+
+		renderModelSelect(modelDB.models);
+		// console.log(modelDB);
+		saveToLocalStorage(modelDB);
+		toast(`Model ${model.name} saved to local storage!`, 'success');
+	} else {
+		console.log('model name is empty');
+		toast('Model name cannot be empty!', 'error');
+	}
 }
 
 function loadModel(model_name, classifier) {
@@ -333,7 +318,7 @@ function loadModel(model_name, classifier) {
 		// console.log('loaded model', model);
 		// console.log('loaded labels', labels);
 
-		toast(`${model.name} is loaded!`);
+		toast(`Model ${model.name} is loaded!`, 'info');
 		// update current model name
 		modelDB.current = model_name;
 		modelDB.models = models;
@@ -403,9 +388,14 @@ async function clearAll(classifier) {
 
 async function clearSavedData(event) {
 	event.preventDefault();
+	toast('Cleared all data from local storage', 'success');
 	const jsonStr = JSON.stringify({});
 	// console.log('data cleared');
+	
 	localStorage.setItem(storageKey, jsonStr);
+	loadClassifierFromLocalStorage();
+	getEl('labels_container').innerHTML = '';
+	renderModelSelect([]);
 }
 
 async function saveToLocalStorage(dataToSave) {
@@ -446,10 +436,87 @@ function getEl(elementId) {
 	return document.getElementById(elementId);
 }
 
-function toast(message) {
-	M.toast({html: message});
+function toast(message, status) {
+
+	let icon;
+	let icon_col;
+
+	switch (status) {
+		case 'success':
+			icon = 'done';
+			icon_col = 'green';
+			break;
+		case 'error':
+			icon = 'error';
+			icon_col = 'red';
+			break;
+
+		default:
+			icon = 'info';
+			icon_col = 'white';
+			break;
+	}
+
+	message = `<i class="material-icons ${icon_col}-text" style="padding-right: 10px">${icon}</i>  ${message}`;
+
+	M.toast({
+		html: message,
+		// displayLength: 5000000
+	});
 }
 
 window.onload = () => {
 	app();
+}
+
+async function toDatasetObject(dataset) {
+	const result = await Promise.all(
+		Object.entries(dataset).map(async ([classId, value], index) => {
+			const data = await value.data();
+			return {
+				// classId: Number(classId),
+				classId: classId,
+				data: Array.from(data),
+				shape: value.shape
+			};
+		})
+	);
+	// console.log('toDatasetObject:', result);
+	return result;
+};
+
+function fromDatasetObject(datasetObject) {
+	// console.log('datasetObject:', datasetObject);
+	let test = Object.entries(datasetObject).reduce((result, [indexString, { data, shape }]) => {
+		const tensor = tf.tensor2d(data, shape);
+		const index = Number(indexString);
+
+		let label = datasetObject[indexString].classId;
+		result[label] = tensor;
+		// result[indexString] = tensor;
+		// console.log('result:', result);
+		return result;
+	}, {});
+	// console.log('test:', test)
+	return test;
+}
+
+async function setupWebcam() {
+	console.log('setting up video');
+	return new Promise((resolve, reject) => {
+		const navigatorAny = navigator;
+		navigator.getUserMedia = navigator.getUserMedia ||
+			navigatorAny.webkitGetUserMedia || navigatorAny.mozGetUserMedia ||
+			navigatorAny.msGetUserMedia;
+		if (navigator.getUserMedia) {
+			navigator.getUserMedia({ video: true },
+				stream => {
+					webcamElement.srcObject = stream;
+					webcamElement.addEventListener('loadeddata', () => resolve(), false);
+				},
+				error => reject());
+		} else {
+			reject();
+		}
+	});
 }

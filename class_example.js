@@ -630,10 +630,11 @@ function start() {
 	});
 }
 let net;
+
 async function update() {
 	ctx.fillText('hello', 20, 20);
 	ctx.drawImage(video, 0, 0, 256, 256);
-
+	
 	if (classifier.getNumClasses() > 0) {
 		// const img = await webcam.capture();
 		const img = grabScreenshot();
@@ -660,7 +661,7 @@ async function update() {
 		// img.dispose();
 	}
 
-	await tf.nextFrame();
+	// await tf.nextFrame();
 
 	requestAnimationFrame(update); // wait for the browser to be ready to present another animation frame.       
 }
@@ -669,7 +670,7 @@ async function update() {
 
 let video = document.getElementById("webcam");
 // var video = document.querySelector("#videoElement");
-window.onload = (event) => {
+window.onload =  (event) => {
 	console.log('page is fully loaded');
 	if (navigator.mediaDevices.getUserMedia) {
 		navigator.mediaDevices.getUserMedia({ video: true })
@@ -682,8 +683,9 @@ window.onload = (event) => {
 			});
 	}
 
-	video.addEventListener('loadeddata', function () {
+	video.addEventListener('loadeddata', async function () {
 		// video.play();  // start playing
+		net = await mobilenet.load();
 		console.log('loaded')
 		update(); //Start rendering
 	});
@@ -712,7 +714,7 @@ function grabScreenshot() {
 
 async function app() {
 	start();
-	net = await mobilenet.load();
+	
 
 	// video.src = "http://techslides.com/demos/sample-videos/small.mp4";
 
