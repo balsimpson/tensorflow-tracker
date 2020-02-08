@@ -28,10 +28,7 @@
 	<nav class="blue-grey darken-4">
 		<div class="container">
 			<div class="nav-wrapper">
-				<a href="" class="brand-logo left">trackr</a>
-				<ul class="right">
-					<li><a class="waves-effect waves-light btn btn-small blue-grey lighten-2 blue-grey-text text-darken-4"><i class="material-icons left">visibility</i>New Model</a></li>
-				</ul>
+				<a href="" class="brand-logo">trackr</a>
 			</div>
 		</div>
 		<div id="preloader_container">
@@ -43,16 +40,6 @@
 	<div class="container content">
 		<!-- Page Content goes here -->
 
-		<!-- Load saved model  dropdown -->
-		<div class="row">
-			<div class="input-field col s12">
-				<select id="models_list">
-					<!-- Saved models -->
-				</select>
-				<label>Current model</label>
-			</div>
-		</div>
-
 		<!-- video and labels -->
 		<div class="row">
 			<div class="col s12">
@@ -62,7 +49,7 @@
 						<video class="" autoplay="" playsinline="" muted="" id="webcam" width="224"
 							height="224"></video>
 					</div>
-					
+
 					<div class="card-action blue-grey darken-3" style="min-height: 74px;">
 						<!-- Predictions -->
 						<div id="console" class="row ">
@@ -80,7 +67,7 @@
 
 		<!-- labels and add label input -->
 		<div class="row center-align">
-			<div class="col s12" id="labels_container">
+			<div class="col s12" id="label_list">
 				<!-- <p class="blue-grey-text lighten-1" >No labels found. Add new labels and click on them to train your model</p> -->
 			</div>
 
@@ -94,7 +81,7 @@
 					<button id="add_label_btn" class="btn btn-small blue-grey darken-3">Add Label</button>
 				</form>
 			</div>
-			
+
 			<div class="row">
 				<div class="col s12" id="confusion_matrix">
 
@@ -109,49 +96,46 @@
 		<div class="col s12">
 			<div class="row blue-grey darken-3">
 
-				<form id="add_model_form" class="col s12">
-					<div class="input-field">
-						<input placeholder="Name of the model" id="model_name" type="text"
-							class="validate center white-text" style="width: 224;">
-						<span class="helper-text blue-grey-text text-lighten-2">Model is saved to local
-							storage</span>
-					</div>
-					<button class="waves-effect waves-light btn blue-grey lighten-3 blue-grey-text text-darken-3"
-						id="saveModel" style="margin-bottom: 20px;"><i
-							class="material-icons left blue-grey-text text-darken-3">save</i>Save Model</button>
-				</form>
-
 				<div class="container">
-					<p class="blue-grey-text lighten-1" style="padding-bottom: 10px; border-bottom: 1px solid">Local
-						storage space is limited. If your model exceeds the size limit, download it as a JSON file. To load
-						the model, upload the JSON file.</p>
+					<p class="blue-grey-text lighten-1" style="padding-bottom: 10px; border-bottom: 1px solid">All
+						changes are automatically saved to the local storage, but space is limited. If your model
+						exceeds the size limit, download it as a JSON file. To load the model, upload the JSON file.</p>
 					<div class="col s6">
 						<p class="blue-grey-text text-lighten-2">Download the model JSON file </p>
-						<a class="waves-effect waves-light btn blue-grey darken-4" style="margin-bottom: 20px;"
+						
+						<div class="file-field input-field">
+							<a class="waves-effect waves-light btn blue-grey darken-4" style="margin-bottom: 20px;"
 							id="downloadModel"><i class="material-icons left">file_download</i>Download</a>
+						</div>
+						
+						
 					</div>
 
-					<div class="col s6">
+					<div class="col s6 right">
 						<p class="blue-grey-text text-lighten-2">Upload the model JSON file </p>
-						<a class="waves-effect waves-light btn blue-grey darken-4" style="margin-bottom: 20px;"
-							id="loadModel"><i class="material-icons left">file_upload</i>Upload</a>
+						<!-- <form action="#"> -->
+						<div class="file-field input-field">
+							<a class="waves-effect waves-light btn blue-grey darken-4 center" style="margin-bottom: 20px;">
+								<span><i class="material-icons left">file_upload</i> Upload</span>
+								<input id="uploadModel" type="file">
+							</a>
+							<div class="file-path-wrapper">
+								<input class="file-path validate blue-grey-text text-lighten-2 center" type="text">
+							  </div>
+						</div>
+						<!-- </form> -->
 					</div>
 				</div>
 			</div>
 			<!-- <div class="divider blue-grey"></div> -->
 			<div class="row blue-grey darken-4">
 				<div class="container">
-					<p class="blue-grey-text lighten-1" style="padding: 20px 0; border-bottom: 1px solid">Delete all saved model data from local storage or delete the currently loaded model and associated labels.</p>
-					<div class="col s6">
+					<p class="blue-grey-text lighten-1" style="padding: 20px 0; border-bottom: 1px solid">Delete all
+						saved model data from local storage.</p>
+					<div class="col s12">
 						<p class="blue-grey-text text-lighten-2">Delete local storage data</p>
 						<a class="waves-effect waves-light btn btn-small red darken-4" style="margin-bottom: 20px;"
 							id="clearsaveddata"><i class="material-icons left">delete_forever</i>Delete Data</a>
-					</div>
-
-					<div class="col s6">
-						<p class="blue-grey-text text-lighten-2">Delete the current model</p>
-						<a class="waves-effect waves-light btn btn-small red darken-4" style="margin-bottom: 20px;"
-							id="clearall"><i class="material-icons left">visibility_off</i>Delete Model</a>
 					</div>
 				</div>
 
@@ -178,7 +162,7 @@
 			// console.log('M:', models);
 			// var elems = document.querySelectorAll('select');
 			// var instances = M.FormSelect.init(elems, {});
-			renderModelSelect(models);
+			// renderModelSelect(models);
 			// var instances = M.FormSelect.init(elems, {
 			// 	// classes: 'blue'
 			// });

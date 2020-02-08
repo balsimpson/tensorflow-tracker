@@ -1,77 +1,141 @@
 const storageKey = "knnClassifier";
 
-let net;
-let labels = [];
-let models = [];
-let modelDB = {};
-
 class Model {
-	constructor(name, labels, dataObj) {
-		this.name = name;
-		// this.labels = labels;
-		this.labels = this.updateLabels(labels);
-		this.model = dataObj;
+	constructor(modelLabels, modelData, labelsDivEl) {
+		this.labels = modelLabels || [];
+		this.data = modelData || undefined;
+		this.labelElement = labelsDivEl;
 	}
-	add() {
-		models.push(this);
+
+	/* makes a button tag */
+	static createLabelItem(label) {
+		const labelBtn = document.createElement('button');
+		labelBtn.setAttribute('id', label.classId);
+		labelBtn.setAttribute('class', 'btn btn-small btn-label waves-effect waves-light blue-grey darken-2');
+		labelBtn.setAttribute('style', 'display: inline-flex;');
+
+		labelBtn.textContent = `${label.classId} (${label.count})`;
+
+		const labelClose = document.createElement('i');
+		labelClose.setAttribute('class', 'close material-icons blue-grey-text text-lighten-2');
+		labelClose.setAttribute('data-name', label.classId);
+		labelClose.setAttribute('style', 'padding: 0 0 0 10;');
+		labelClose.textContent = 'close';
+		labelBtn.appendChild(labelClose);
+
+		return labelBtn;
+	}
+
+	load(model) {
+
+		if (model) {
+			this.labels = model.labels || [];
+			this.data = model.data || undefined;
+		} else {
+			console.log('no data to load');
+			this.labels = [];
+			this.data = undefined;
+		}
+
+		this.updateClassifier(this.data);
+		this.renderLabels();
 		return this;
 	}
-	updateLabels(labelsArr) {
-		let labels = labelsArr.map(label => {
-			return new Label(label.name, label.count, label.id)
+
+	updateClassifier(data) {
+		if (data) {
+			const dataset = fromDatasetObject(data);
+			classifier.setClassifierDataset(dataset);
+		} else {
+			console.log('no data');
+			classifier.clearAllClasses();
+		}
+	}
+
+	update(modelLabels, modelData) {
+		let labels = [];
+		if (modelLabels.length > 0) {
+			for (const labelItem of modelLabels) {
+				let label = {
+					classId: labelItem.classId,
+					count: labelItem.count
+				};
+				labels.push(label);
+			}
+		}
+
+		this.labels = labels || this.labels;
+		this.data = modelData || this.data;
+		return this;
+	}
+
+	updateData(modelData) {
+		this.data = modelData || this.data;
+		return this;
+	}
+
+	addLabel(labelName, labelCount = 0) {
+
+		let [labelExists] = this.labels.map(label => {
+			return (label.classId === labelName) ? true : false;
+		});
+
+		if (labelExists) {
+			toast(`${labelName} already exists!`, 'error');
+			console.log(name, 'label exists');
+			return this;
+		} else {
+			let label = {
+				classId: labelName,
+				count: labelCount
+			};
+			this.labels.push(label);
+			this.renderLabels();
+			return this;
+		}
+
+	}
+
+	async updateLabel(labelName, labelCount) {
+		let [label] = this.labels.filter(l => {
+			return l.classId === labelName;
 		})
-		return labels;
-	}
-	update(labelsArr, updatedModelData) {
-		this.labels = labelsArr;
-		this.model = updatedModelData;
+		label.count = labelCount;
+
+		this.renderLabels();
+
 		return this;
 	}
-	delete() {
-		// delete from models array
-		models = models.filter(model => {
-			return this.name != model.name;
+
+	async deleteLabel(labelName) {
+
+		let [label] = this.labels.filter(l => {
+			return l.classId === labelName;
 		})
-		return this;
-	}
-}
 
-class Label {
-	constructor(name, count, id) {
-		this.name = name;
-		this.count = count;
-		this.id = id;
-	}
-
-	add() {
-		labels.push(this);
-		return this;
-	}
-
-	delete() {
-		// delete from labels array
-		labels = labels.filter(label => {
-			return this.name != label.name;
+		this.labels = this.labels.filter(l => {
+			return l.classId !== labelName;
 		})
+
+		if (label.count > 0) {
+			classifier.clearClass(labelName);
+		}
+
+		this.renderLabels();
 		return this;
 	}
 
-	updateId(id) {
-		this.id = id;
-		return this;
-	}
+	// Render DOM elements
+	renderLabels() {
+		/* Clear label items */
+		while (this.labelElement.firstChild) {
+			this.labelElement.removeChild(this.labelElement.firstChild);
+		}
 
-	updateCount(count) {
-		this.count = count;
-		return this;
-	}
-
-	render() {
-		// console.log(this.name);
-		let labels_container = document.getElementById('labels_container');
-
-		labels_container.innerHTML += `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${this.name} style="display: inline-flex;">${this.name} (${this.count})<i class="close material-icons" style="padding: 0 0 0 10;color: black;" onclick="deleteLabel(event, ${this.name})">close</i>`;
-		return this;
+		/* Add buton tags for label items */
+		for (const label of this.labels) {
+			this.labelElement.appendChild(Model.createLabelItem(label))
+		}
 	}
 }
 
@@ -100,8 +164,13 @@ const capture = () => {
 	// document.querySelector;
 };
 
-const classifier = loadClassifierFromLocalStorage();
+let labelDivEl = getEl('label_list');
+let modelDB = new Model([], {}, labelDivEl);
+
+let net;
+let classifier = new knnClassifier.KNNClassifier();
 const webcamElement = document.getElementById('webcam');
+
 
 async function app() {
 	// Load the model.
@@ -113,69 +182,66 @@ async function app() {
 
 	getEl('preloader').classList.add('hide');
 
-	let label_count = 0;
+	let saved_data = await getFromLocalStorage();
+	modelDB.load(saved_data);
 
-	const addExample = async (classId, label_name) => {
-		// console.log('classId: ', classId);
+	modelDB.renderLabels();
+
+	const addExample = async (classId) => {
 		const img = await webcam.capture();
 		const activation = net.infer(img, 'conv_preds');
 
-		classifier.addExample(activation, label_name);
+		classifier.addExample(activation, classId);
 
-		label_count = classifier.getClassExampleCount()[label_name];
-		// console.log('label_count', label_count);
+		console.log('count:', classifier.getClassExampleCount()[classId]);
+		modelDB.updateLabel(classId, classifier.getClassExampleCount()[classId]);
 
-		let [label] = labels.filter(l => {
-			return l.name === label_name;
-		})
-
-		label.updateCount(label_count)
-			.updateId(classId);
-
-		// Update current model
-		updateModel();
-		// updateClassifierInLocalStorage(event, classifier);
-
-		// Update label count
-		let labels_container = document.getElementById('labels_container');
-
-		labels_container.children[classId].innerHTML =
-			`${label_name} (${label_count}) <i class="close material-icons" style="padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`
-
+		let modelData = await getModelData();
+		modelDB.update(modelDB.labels, modelData)
+		saveToLocalStorage(modelDB);
 		// Dispose the tensor to release the memory.
 		img.dispose();
 	};
 
-
-	// Clear all labels from current model
-	getEl('clearall').addEventListener('click', async () => clearAll(classifier));
-
 	// delete all data saved in local storage
 	getEl('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
 
-	// save a model with name
-	getEl('add_model_form').addEventListener('submit', (event) => saveNewModel(event));
+	getEl('uploadModel').addEventListener('change', handleFileSelect, false);
+	
+	
 
-	// load a saved model
-	getEl('models_list').addEventListener('change', async function (event) {
-		console.log('e:', event.target.value);
-		getEl('labels_container').innerHTML = '';
-		loadModel(event.target.value, classifier);
-	});
+	getEl('downloadModel').addEventListener('click', event => {
+		downloadJSON(JSON.stringify(modelDB));
+	})
 
 	// label button click listener
-	getEl('labels_container').addEventListener('click', (event) => {
+	getEl('label_list').addEventListener('click', async (event) => {
+		let id = event.target.getAttribute('data-name');
 		if (event.target.classList.contains('btn')) {
-			let id = event.target.id;
-			labels.forEach((value, index) => {
-				if (value.name === id) {
-					addExample(index, id);
-				}
-			});
+			addExample(event.target.id);
+		} else if (event.target.classList.contains('close')) {
+			modelDB.deleteLabel(id);
+			let modelData = await getModelData();
+			modelDB.update(modelDB.labels, modelData)
+			saveToLocalStorage(modelDB);
 		}
 	});
 
-	getEl('add_label_form').addEventListener('submit', (event) => addNewLabel(event));
+	getEl('add_label_form').addEventListener('submit', (event) => {
+		event.preventDefault();
+		let label_name = getEl('label_name').value;
+
+		if (label_name) {
+			modelDB.addLabel(label_name);
+			getEl('add_label_form').reset();
+			saveToLocalStorage(modelDB);
+			// getEl('label_name').value = '';
+			// getEl('label_name').classList.remove('valid');
+		} else {
+			toast('Label name cannot be empty', 'error');
+		}
+	});
+
 
 	// prediction elements
 	let predictions = document.getElementById('console');
@@ -183,7 +249,7 @@ async function app() {
 	let confidenceEl = document.getElementById('confidence');
 
 	let confusionEl = document.getElementById('confusion_matrix');
-	console.log(confusionEl.children.length);
+
 	try {
 		while (true) {
 			if (classifier.getNumClasses() > 0) {
@@ -200,30 +266,11 @@ async function app() {
 				}
 				// console.log(classifier.getClassExampleCount());
 				if (result.label !== undefined) {
-
-					let [label] = labels.filter(l => {
-						return l.name == result.label;
-					})
-
-					let label_name = label ? label.name : '';
-					let confidence = result.confidences[result.label];
-
-					// confidence color
-					let btn_color = getBtnColor(confidence);
-
-					predictions.setAttribute('style', 'display: block;')
-					labelEl.innerHTML = label_name;
-					confidenceEl.innerHTML = (confidence * 100).toFixed(0) + '%';
-					confidenceEl.setAttribute('style', `color: ${btn_color};`);
-
-					// if (confidence < 1 && confusionEl.children.length < 6) {
-					// 	capture();
-					// }
+					displayPredictions(result, predictions, labelEl, confidenceEl);
 				}
-
-				// document.getElementById('console').innerHTML = predictionTxt;
-				// Dispose the tensor to release the memory.
 				img.dispose();
+			} else {
+				predictions.setAttribute('style', 'display: none;')
 			}
 
 			await tf.nextFrame();
@@ -234,15 +281,23 @@ async function app() {
 
 }
 
-
+function displayPredictions(result, predictions, labelEl, confidenceEl) {
+	let confidence = result.confidences[result.label];
+	// confidence color
+	let btn_color = getBtnColor(confidence);
+	predictions.setAttribute('style', 'display: block;');
+	labelEl.innerHTML = result.label;
+	confidenceEl.innerHTML = (confidence * 100).toFixed(0) + '%';
+	confidenceEl.setAttribute('style', `color: ${btn_color};`);
+}
 
 function getBtnColor(confidence) {
 
 	if (typeof confidence === 'number') {
 		if (confidence > 0.70) {
-			btn_color = 'teal';
+			btn_color = '#8bc34a';
 		}
-		else if (confidence > 0.5 && confidence < 0.70) {
+		else if (confidence >= 0.5 && confidence <= 0.70) {
 			btn_color = 'orange';
 		}
 		else if (confidence < 0.50) {
@@ -254,132 +309,37 @@ function getBtnColor(confidence) {
 	return btn_color;
 }
 
-function addNewLabel(event) {
-	event.preventDefault();
-	let label_name = getEl('label_name').value;
-
-	if (label_name) {
-		let label = new Label(label_name, 0, '');
-		label.add().render();
-
-		getEl('label_name').value = '';
-		getEl('label_name').classList.remove('valid');
-	} else {
-		console.log('label name is empty');
-	}
+function handleFileSelect(event) {
+	const reader = new FileReader();
+	reader.onload = handleFileLoad;
+	reader.readAsText(event.target.files[0]);
 }
 
-async function saveNewModel(event) {
-	event.preventDefault();
-	let model_name = getEl('model_name').value;
-
-	if (model_name) {
-		const dataset = classifier.getClassifierDataset();
-		const datasetOjb = await toDatasetObject(dataset);
-
-		let model = new Model(model_name, labels, datasetOjb);
-		model.add();
-
-		modelDB.current = model.name;
-		modelDB.models = models;
-
-		renderModelSelect(modelDB.models);
-		// console.log(modelDB);
-		saveToLocalStorage(modelDB);
-		toast(`Model ${model.name} saved to local storage!`, 'success');
-	} else {
-		console.log('model name is empty');
-		toast('Model name cannot be empty!', 'error');
-	}
+function handleFileLoad(event) {
+	let data = JSON.parse(event.target.result);
+	modelDB.load(data);
+	// console.log();
 }
 
-function loadModel(model_name, classifier) {
-
-	try {
-
-
-		labels = [];
-
-		let [model] = models.filter(m => {
-			return m.name === model_name;
-		})
-
-		// console.log('loading ', model_name, model);
-		// get model
-		const dataset = fromDatasetObject(model.model);
-		// update classifier
-		classifier.setClassifierDataset(dataset);
-
-		model.labels.forEach(label => {
-			// let label = new Label(l.name, l.count, l.id);
-			label.add().render();
-		});
-
-		// console.log('loaded model', model);
-		// console.log('loaded labels', labels);
-
-		toast(`Model ${model.name} is loaded!`, 'info');
-		// update current model name
-		modelDB.current = model_name;
-		modelDB.models = models;
-
-		saveToLocalStorage(modelDB);
-	} catch (error) {
-		console.log('error: ', error);
-	}
+async function getModelData() {
+	const dataset = classifier.getClassifierDataset();
+	const datasetObj = await toDatasetObject(dataset);
+	return datasetObj;
 }
-
-async function updateModel() {
-	// event.preventDefault();
-	if (modelDB.current) {
-		// console.log('before:', modelDB);
-		const dataset = classifier.getClassifierDataset();
-		const datasetOjb = await toDatasetObject(dataset);
-
-		let [model] = models.filter(m => {
-			return m.name === modelDB.current;
-		})
-
-		// console.log('datasetOjb:', datasetOjb, model);
-		model.update(labels, datasetOjb);
-
-		modelDB.models = models;
-		saveToLocalStorage(modelDB);
-		// console.log('after:', modelDB);
-	} else {
-		console.log('no models saved:', modelDB);
+function downloadJSON(data) {
+	let filename = 'classifier.json';
+	let blob = new Blob([data], { type: 'text/json' });
+	if (window.navigator.msSaveOrOpenBlob) {
+		window.navigator.msSaveBlob(blob, filename);
 	}
-}
-
-function renderLabel(label) {
-
-	let labels_container = document.getElementById('labels_container');
-
-	labels_container.innerHTML += `<button class="btn btn-small waves-effect waves-light blue-grey darken-1" id=${label.name} style="
-    display: inline-flex;">${label.name} (${label.count})<i class="close material-icons" style="
-    padding: 0 0 0 10;color: black;" onclick="deleteLabel(event)">close</i>`;
-
-}
-
-function deleteLabel(event) {
-
-	let name = event.target.parentElement.id;
-	let [label] = labels.filter(l => {
-		return l.name === name;
-	})
-
-	// console.log('deleting: ', label.id, name);
-
-	if (label.count > 0) {
-		classifier.clearClass(name);
+	else {
+		let elem = window.document.createElement('a');
+		elem.href = window.URL.createObjectURL(blob);
+		elem.download = filename;
+		document.body.appendChild(elem);
+		elem.click();
+		document.body.removeChild(elem);
 	}
-
-	label.delete();
-	let labels_container = event.target.parentElement.parentElement;
-	labels_container.removeChild(getEl(name));
-
-	// updateClassifierInLocalStorage(event, classifier);
-	updateModel();
 }
 
 async function clearAll(classifier) {
@@ -388,49 +348,25 @@ async function clearAll(classifier) {
 
 async function clearSavedData(event) {
 	event.preventDefault();
-	toast('Cleared all data from local storage', 'success');
 	const jsonStr = JSON.stringify({});
-	// console.log('data cleared');
-	
 	localStorage.setItem(storageKey, jsonStr);
-	loadClassifierFromLocalStorage();
-	getEl('labels_container').innerHTML = '';
-	renderModelSelect([]);
+
+	modelDB.load();
+	classifier.clearAllClasses();
+	toast('Cleared all data from local storage', 'success');
 }
 
 async function saveToLocalStorage(dataToSave) {
 	const jsonStr = JSON.stringify(dataToSave);
-	localStorage.setItem(storageKey, jsonStr);
+	let res = localStorage.setItem(storageKey, jsonStr);
 }
 
-function loadClassifierFromLocalStorage() {
-
-	const classifier = new knnClassifier.KNNClassifier();
-
+async function getFromLocalStorage() {
 	let saved_data = localStorage.getItem(storageKey);
 	saved_data = JSON.parse(saved_data);
-	// console.log(saved_data);
 
-	if (saved_data && saved_data.models) {
-
-		saved_data.models.forEach(data => {
-			let model = new Model(data.name, data.labels, data.model);
-			model.add();
-
-			if (models && saved_data.current && saved_data.current === model.name) {
-				// console.log('loading model - ', model.name)
-				modelDB.current = saved_data.current;
-				loadModel(saved_data.current, classifier);
-			}
-		})
-
-		modelDB.models = models;
-		// console.log('modelDB: Updated - ', modelDB);
-	}
-	return classifier;
+	return saved_data;
 }
-
-
 
 function getEl(elementId) {
 	return document.getElementById(elementId);
