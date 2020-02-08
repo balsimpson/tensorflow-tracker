@@ -31,10 +31,11 @@
 	<nav class="blue-grey darken-4">
 		<div class="container">
 			<div class="nav-wrapper">
-				<a href="" class="brand-logo">trackr</a>
+				<a href="" class="brand-logo center">trackr</a>
 			</div>
 		</div>
 		<div id="preloader_container">
+			  
 			<div id="preloader" class="progress">
 				<div class="indeterminate blue-grey lighten-2"></div>
 			</div>
@@ -78,7 +79,7 @@
 				<form id="add_label_form" class="col s12">
 					<div class="input-field">
 						<input placeholder="Name of the label" id="label_name" type="text"
-							class="validate center white-text" style=" width: 224;">
+							class="validate center white-text" style=" width: 224px;">
 						<span class="helper-text blue-grey-text text-lighten-2">e.g. cat or dog</span>
 					</div>
 					<button id="add_label_btn" class="btn btn-small blue-grey darken-3">Add Label</button>
@@ -152,44 +153,7 @@
 	<script type="text/javascript" src="js/materialize.min.js"></script>
 	<!-- Load index.js after the content of the page -->
 	<script src="index.js"></script>
-	<script>
-		document.addEventListener('DOMContentLoaded', function () {
-			// var elems_fab = document.querySelectorAll('.fixed-action-btn');
-			// var instances = M.FloatingActionButton.init(elems_fab, {});
-
-			// var elems_collapsible = document.querySelectorAll('.collapsible');
-			// var instances = M.Collapsible.init(elems_collapsible, {});
-
-			// var elems = document.querySelectorAll('.dropdown-trigger');
-			// var instances = M.Dropdown.init(elems, {});
-			// console.log('M:', models);
-			// var elems = document.querySelectorAll('select');
-			// var instances = M.FormSelect.init(elems, {});
-			// renderModelSelect(models);
-			// var instances = M.FormSelect.init(elems, {
-			// 	// classes: 'blue'
-			// });
-
-			// document.getElementById('models_list').change(function () {
-			// });
-		});
-
-		function renderModelSelect(models) {
-			getEl('models_list').innerHTML = '';
-			if (models.length > 0) {
-				models.map(model => {
-					getEl('models_list').innerHTML += `<option selected value="${model.name}">${model.name}</option>`
-				})
-			} else {
-				getEl('models_list').innerHTML += `<option class="white-text" value="">No models saved</option>`
-			}
-			var elems = document.querySelectorAll('select');
-			var instances = M.FormSelect.init(elems, {
-				// classes: 'blue'
-			});
-		}
-	</script>
-
+	
 </body>
 
 </html>

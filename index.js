@@ -19,7 +19,7 @@ class Model {
 		const labelClose = document.createElement('i');
 		labelClose.setAttribute('class', 'close material-icons blue-grey-text text-lighten-2');
 		labelClose.setAttribute('data-name', label.classId);
-		labelClose.setAttribute('style', 'padding: 0 0 0 10;');
+		labelClose.setAttribute('style', 'padding: 0 0 0 10px;');
 		labelClose.textContent = 'close';
 		labelBtn.appendChild(labelClose);
 
