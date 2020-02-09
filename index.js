@@ -5,6 +5,7 @@ class Model {
 		this.labels = modelLabels || [];
 		this.data = modelData || undefined;
 		this.labelElement = labelsDivEl;
+		this.settings = {};
 	}
 
 	/* makes a button tag */
@@ -71,6 +72,21 @@ class Model {
 
 	updateData(modelData) {
 		this.data = modelData || this.data;
+		return this;
+	}
+
+	/**
+	 * Log data to a Google Sheet
+	 * @param {string} sheetsId Google Sheets id
+	 * @param {string} stdlibURL Standard Library url
+	 * @param {string} ignoreLabel Label to ignore
+	 */
+	addLogging(sheetsId, stdlibURL, ignoreLabel) {
+		this.settings = {
+			sheets_id: sheetsId,
+			stdlib_url: stdlibURL,
+			ignore_label: ignoreLabel
+		}
 		return this;
 	}
 
@@ -166,6 +182,10 @@ const capture = () => {
 
 let labelDivEl = getEl('label_list');
 let modelDB = new Model([], {}, labelDivEl);
+
+
+// Add logging
+modelDB.addLogging(sheetsId, stdlibURL, ignoreLabel)
 
 let net;
 let classifier = new knnClassifier.KNNClassifier();

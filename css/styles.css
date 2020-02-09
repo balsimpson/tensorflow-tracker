@@ -204,3 +204,8 @@ p {
     top: 0;
     left: 0;
 }
+
+.modal .modal-footer {
+    padding: 6px 26px;
+    height: 64px;
+}
