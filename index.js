@@ -192,12 +192,11 @@ async function app() {
 		const activation = net.infer(img, 'conv_preds');
 
 		classifier.addExample(activation, classId);
-
-		console.log('count:', classifier.getClassExampleCount()[classId]);
+		// console.log('count:', classifier.getClassExampleCount()[classId]);
 		modelDB.updateLabel(classId, classifier.getClassExampleCount()[classId]);
 
 		let modelData = await getModelData();
-		modelDB.update(modelDB.labels, modelData)
+		modelDB.update(modelDB.labels, modelData);
 		saveToLocalStorage(modelDB);
 		// Dispose the tensor to release the memory.
 		img.dispose();
