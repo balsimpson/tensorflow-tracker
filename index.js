@@ -300,6 +300,7 @@ async function app() {
 				}
 				// console.log(classifier.getClassExampleCount());
 				if (result.label !== undefined) {
+					trackLabel(result.label);
 					displayPredictions(result, predictions, labelEl, confidenceEl);
 				}
 				img.dispose();
@@ -499,7 +500,7 @@ function trackLabel(labelName) {
 		// console.log(labelName, foundLabelData.label);
 		if (foundLabelData.label !== ignoreLabelName && foundLabelData.duration > (10 * 1000)) {
 			console.log(labelName);
-			logData(foundLabelData);
+			// logData(foundLabelData);
 		}
 		foundLabelData.date = Date.now();
 		foundLabelData.duration = 0;
