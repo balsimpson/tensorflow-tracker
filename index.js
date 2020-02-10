@@ -5,7 +5,7 @@ class Model {
 		this.labels = modelLabels || [];
 		this.data = modelData || undefined;
 		this.labelElement = labelsDivEl;
-		this.settings = {};
+		this.log = {};
 	}
 
 	/* makes a button tag */
@@ -80,12 +80,15 @@ class Model {
 	 * @param {string} sheetsId Google Sheets id
 	 * @param {string} stdlibURL Standard Library url
 	 * @param {string} ignoreLabel Label to ignore
+	 * @param {number} threshold Threshold in seconds for labellogging
 	 */
-	addLogging(sheetsId, stdlibURL, ignoreLabel) {
-		this.settings = {
+
+	addLogging(sheetsId, stdlibURL, ignoreLabel, threshold) {
+		this.log = {
 			sheets_id: sheetsId,
 			stdlib_url: stdlibURL,
-			ignore_label: ignoreLabel
+			ignore_label: ignoreLabel || 'default',
+			threshold: threshold || 10
 		}
 		return this;
 	}
@@ -98,7 +101,6 @@ class Model {
 
 		if (labelExists) {
 			toast(`${labelName} already exists!`, 'error');
-			console.log(name, 'label exists');
 			return this;
 		} else {
 			let label = {
@@ -185,7 +187,7 @@ let modelDB = new Model([], {}, labelDivEl);
 
 
 // Add logging
-modelDB.addLogging(sheetsId, stdlibURL, ignoreLabel)
+// modelDB.addLogging(sheetsId, stdlibURL, ignoreLabel)
 
 let net;
 let classifier = new knnClassifier.KNNClassifier();
@@ -226,8 +228,8 @@ async function app() {
 	getEl('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
 
 	getEl('uploadModel').addEventListener('change', handleFileSelect, false);
-	
-	
+
+
 
 	getEl('downloadModel').addEventListener('click', event => {
 		downloadJSON(JSON.stringify(modelDB));
@@ -243,6 +245,19 @@ async function app() {
 			let modelData = await getModelData();
 			modelDB.update(modelDB.labels, modelData)
 			saveToLocalStorage(modelDB);
+		}
+	});
+	
+	// save settings
+	getEl('saveSettings').addEventListener('click', async (event) => {
+		let sheets_id = getEl('sheets_id').value;
+		let sheets_url = getEl('sheets_url').value;
+		let ignore_label = getEl('ignore_label').value;
+		let threshold = getEl('threshold').value;
+
+		if (sheets_id && sheets_url) {
+			modelDB.addLogging(sheets_id, sheets_url, ignore_label, threshold);
+			toast(`Logging settings saved!`, 'success');
 		}
 	});
 
@@ -475,3 +490,93 @@ async function setupWebcam() {
 		}
 	});
 }
+
+// track label
+function trackLabel(labelName) {
+	if (labelName === foundLabelData.label) {
+		foundLabelData.duration = Date.now() - foundLabelData.date;
+	} else {
+		// console.log(labelName, foundLabelData.label);
+		if (foundLabelData.label !== ignoreLabelName && foundLabelData.duration > (10 * 1000)) {
+			console.log(labelName);
+			logData(foundLabelData);
+		}
+		foundLabelData.date = Date.now();
+		foundLabelData.duration = 0;
+		foundLabelData.label = labelName;
+	}
+	// console.log(foundLabelData);
+}
+
+function millisToDuration(millis, type) {
+	let minutes = Math.floor(millis / 60000);
+	let seconds = ((millis % 60000) / 1000).toFixed(0);
+	let response = '';
+
+	if (type === 'text') {
+		if (minutes > 0) {
+			let min = minutes > 1 ? 'minutes' : 'minute';
+			response += `${minutes} ${min}`
+		}
+
+		if (seconds > 0) {
+			let sec = seconds > 1 ? 'seconds' : 'second';
+			response += ` ${seconds} ${sec}`
+		}
+	} else {
+		if (minutes > 0) {
+			response += `${minutes} min `
+		}
+
+		if (seconds > 0) {
+			response += `${seconds} sec`
+		}
+	}
+
+	// console.log('duration', response);
+	return response;
+}
+
+
+function getDate(timestamp) {
+	let d = new Date(timestamp);
+	return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()} ${d.toLocaleTimeString()}`;
+}
+
+// log data to google sheets through stdlib
+async function logData(data) {
+
+	if (sheetId) {
+		let save_data = {
+			fieldsets: [{
+				date: getDate(data.date),
+				duration: data.duration,
+				readable: millisToDuration(data.duration),
+				label: data.label
+			}],
+			range: 'log!A1:D',
+			spreadsheetId: sheetId
+		}
+
+		axios({
+			url: 'https://tinkr.api.stdlib.com/sheets@dev/add/',
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json"
+			},
+			data: save_data
+		})
+			.then(result => {
+				return result;
+			})
+
+			.catch(err => {
+				console.log(err);
+			})
+	} else {
+		console.log('sheetId is not specified. No data logged.')
+	}
+}
+
+
+
