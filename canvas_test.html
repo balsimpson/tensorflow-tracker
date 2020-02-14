@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Canvas test</title>
+</head>
+
+<body>
+	<video class="" autoplay="" playsinline="" muted="" id="webcam" width="224" height="224"></video>
+
+	<canvas id="canvas" width="224" height="224"></canvas>
+
+	<script>
+		// Put event listeners into place
+		window.addEventListener("DOMContentLoaded", function () {
+
+			const canvas = document.getElementById('canvas');
+			const video = document.getElementById('webcam');
+			let ctx = canvas.getContext('2d');
+
+			navigator.mediaDevices
+				.getUserMedia({ video: true, audio: false })
+				.then(stream => {
+					// videoElement.srcObject = stream;
+					// videoElement.width = 224;
+					// videoElement.height = 224;
+
+					video.srcObject = stream;
+					video.onplaying = function () {
+						var croppedWidth = (Math.min(video.videoHeight, canvas.height) / Math.max(video.videoHeight, canvas.height)) * Math.min(video.videoWidth, canvas.width),
+							croppedX = (video.videoWidth - croppedWidth) / 2;
+						crop = { w: croppedWidth, h: video.videoHeight, x: croppedX, y: 0 };
+						// call our loop only when the video is playing
+						raf = requestAnimationFrame(loop);
+					};
+					video.onpause = function () {
+						// stop the loop
+						cancelAnimationFrame(raf);
+					}
+					video.play();
+
+					console.log(videoElement.srcObject);
+					canvas.width = videoElement.width;
+					canvas.height = videoElement.height;
+					ctx.drawImage(videoElement, 0, 0, videoElement.width, videoElement.height);
+				});
+
+		})
+			// Grab elements, create settings, etc.
+		// 	const video = document.getElementById('webcam');
+		// 	var canvas = document.getElementById("canvas"),
+		// 		context = canvas.getContext("2d"),
+		// 		// we don't need to append the video to the document
+
+		// 		errBack = function (error) {
+		// 			console.log("Video capture error: ", error.code);
+		// 		};
+		// 	// create a crop object that will be calculated on load of the video
+		// 	var crop;
+		// 	// create a variable that will enable us to stop the loop.
+		// 	var raf;
+
+		// 	navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+		// 	// Put video listeners into place
+		// 	navigator.getUserMedia(video, function (stream) {
+		// 		video.src = window.URL.createObjectURL(stream);
+		// 		video.onplaying = function () {
+		// 			var croppedWidth = (Math.min(video.videoHeight, canvas.height) / Math.max(video.videoHeight, canvas.height)) * Math.min(video.videoWidth, canvas.width),
+		// 				croppedX = (video.videoWidth - croppedWidth) / 2;
+		// 			crop = { w: croppedWidth, h: video.videoHeight, x: croppedX, y: 0 };
+		// 			// call our loop only when the video is playing
+		// 			raf = requestAnimationFrame(loop);
+		// 		};
+		// 		video.onpause = function () {
+		// 			// stop the loop
+		// 			cancelAnimationFrame(raf);
+		// 		}
+		// 		video.play();
+		// 	}, errBack);
+
+		// 	function loop() {
+		// 		context.drawImage(video, crop.x, crop.y, crop.w, crop.h, 0, 0, canvas.width, canvas.height);
+		// 		raf = requestAnimationFrame(loop);
+		// 	}
+		// 	// now that our video is drawn correctly, we can do...
+		// 	context.translate(canvas.width, 0);
+		// 	context.scale(-1, 1);
+
+		// }, false);
+		// const canvas = document.getElementById('canvas');
+		// const videoElement = document.getElementById('webcam');
+		// let ctx = canvas.getContext('2d');
+		// navigator.mediaDevices
+		// 	.getUserMedia({ video: true, audio: false })
+		// 	.then(stream => {
+		// 		videoElement.srcObject = stream;
+		// 		videoElement.width = 224;
+		// 		videoElement.height = 224;
+		// 		console.log(videoElement.srcObject);
+		// 		canvas.width = videoElement.width;
+		// 		canvas.height = videoElement.height;
+		// 		ctx.drawImage(videoElement, 0, 0, videoElement.width, videoElement.height);
+		// 	});
+
+
+		// set canvas dimensions to video ones to not truncate picture
+
+
+
+	</script>
+</body>
+
+</html>

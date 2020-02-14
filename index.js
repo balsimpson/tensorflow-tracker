@@ -140,12 +140,14 @@ class Model {
 }
 
 const capture = () => {
+
+	// console.log('capture');
 	// add canvas element
-	const canvas = document.createElement('canvas');
-	document.querySelector('body').appendChild(canvas);
+	const canvas = document.getElementById('canvas');
 
 	// set canvas dimensions to video ones to not truncate picture
 	const videoElement = document.querySelector('#webcam');
+	videoElement.setAttribute('class', 'hide');
 	canvas.width = videoElement.width;
 	canvas.height = videoElement.height;
 
@@ -154,14 +156,12 @@ const capture = () => {
 
 	// get image data URL and remove canvas
 	const snapshot = canvas.toDataURL("image/png");
-	canvas.parentNode.removeChild(canvas);
+	// canvas.parentNode.removeChild(canvas);
 
-	const img = document.createElement('img');
-	img.setAttribute('src', snapshot);
-	document.querySelector('#confusion_matrix').appendChild(img);
-	// console.log(snapshot);
-	// update grid picture source
-	// document.querySelector;
+	// const img = document.createElement('img');
+	// img.setAttribute('src', snapshot);
+	// document.querySelector('#confusion_matrix').appendChild(img);
+	requestAnimationFrame(capture);
 };
 
 let labelDivEl = getEl('label_list');
@@ -171,14 +171,21 @@ let net;
 let classifier = new knnClassifier.KNNClassifier();
 const webcamElement = document.getElementById('webcam');
 
+// let canvasElement = document.getElementById('myCanvas');
+// let ctx = canvasElement.getContext('2d');
 
 async function app() {
 	// Load the model.
 	net = await mobilenet.load();
 	console.log('Successfully loaded mobilenet');
+	// ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
+	// const img1 = tf.browser.fromPixels(my32x32CanvasA);
 
-	const webcam = await tf.data.webcam(webcamElement);
-	console.log('Successfully loaded video');
+	const webcam = await setupWebcam();
+
+	// const webcam = await tf.data.webcam(webcamElement);
+	console.log('Successfully loaded video', tf.data);
+	requestAnimationFrame(capture);
 
 	getEl('preloader').classList.add('hide');
 
@@ -188,27 +195,33 @@ async function app() {
 	modelDB.renderLabels();
 
 	const addExample = async (classId) => {
-		const img = await webcam.capture();
-		const activation = net.infer(img, 'conv_preds');
+		// const img = await webcam.capture();
 
-		classifier.addExample(activation, classId);
+		const snapshot = canvas.toDataURL("image/png");
+		const img = document.createElement('img');
+		img.onload = async function () {
+			const activation = net.infer(img, 'conv_preds');
 
-		console.log('count:', classifier.getClassExampleCount()[classId]);
-		modelDB.updateLabel(classId, classifier.getClassExampleCount()[classId]);
+			classifier.addExample(activation, classId);
 
-		let modelData = await getModelData();
-		modelDB.update(modelDB.labels, modelData)
-		saveToLocalStorage(modelDB);
-		// Dispose the tensor to release the memory.
-		img.dispose();
+			console.log('count:', classifier.getClassExampleCount()[classId]);
+			modelDB.updateLabel(classId, classifier.getClassExampleCount()[classId]);
+
+			let modelData = await getModelData();
+			modelDB.update(modelDB.labels, modelData)
+			saveToLocalStorage(modelDB);
+			// Dispose the tensor to release the memory.
+			// img.dispose();
+		};
+		img.setAttribute('src', snapshot);
 	};
 
 	// delete all data saved in local storage
 	getEl('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
 
 	getEl('uploadModel').addEventListener('change', handleFileSelect, false);
-	
-	
+
+
 
 	getEl('downloadModel').addEventListener('click', event => {
 		downloadJSON(JSON.stringify(modelDB));
@@ -253,22 +266,29 @@ async function app() {
 	try {
 		while (true) {
 			if (classifier.getNumClasses() > 0) {
-				const img = await webcam.capture();
+				// const img = await webcam.capture();
+				const snapshot = canvas.toDataURL("image/png");
+				const img = document.createElement('img');
+				img.onload = async function () {
+					// Get the activation from mobilenet from the webcam.
+					const activation = net.infer(img, 'conv_preds');
+					// Get the most likely class and confidences from the classifier module.
+					const result = await classifier.predictClass(activation);
 
-				// Get the activation from mobilenet from the webcam.
-				const activation = net.infer(img, 'conv_preds');
-				// Get the most likely class and confidences from the classifier module.
-				const result = await classifier.predictClass(activation);
+					// console.log(classifier.getClassExampleCount());
+					if (result.label !== undefined) {
+						displayPredictions(result, predictions, labelEl, confidenceEl);
+					}
+				};
+				img.setAttribute('src', snapshot);
 
 
-				if (Date.now() % 100 === 0) {
-					// console.log(result);
-				}
-				// console.log(classifier.getClassExampleCount());
-				if (result.label !== undefined) {
-					displayPredictions(result, predictions, labelEl, confidenceEl);
-				}
-				img.dispose();
+
+				// if (Date.now() % 100 === 0) {
+				// 	// console.log(result);
+				// }
+
+				// img.dispose();
 			} else {
 				predictions.setAttribute('style', 'display: none;')
 			}
