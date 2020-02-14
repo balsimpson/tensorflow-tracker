@@ -5,7 +5,13 @@ class Model {
 		this.labels = modelLabels || [];
 		this.data = modelData || undefined;
 		this.labelElement = labelsDivEl;
-		this.log = {};
+		this.log = {
+			sheets_id: '',
+			sheets_url: '',
+			ignore_label: '',
+			threshold: 10
+		};
+		this.previous = {};
 	}
 
 	/* makes a button tag */
@@ -32,10 +38,17 @@ class Model {
 		if (model) {
 			this.labels = model.labels || [];
 			this.data = model.data || undefined;
+			this.log = model.log || {}
 		} else {
 			console.log('no data to load');
 			this.labels = [];
 			this.data = undefined;
+			this.log = {
+				sheets_id: '',
+				sheets_url: '',
+				ignore_label: '',
+				threshold: 10
+			}
 		}
 
 		this.updateClassifier(this.data);
@@ -258,6 +271,9 @@ async function app() {
 		if (sheets_id && sheets_url) {
 			modelDB.addLogging(sheets_id, sheets_url, ignore_label, threshold);
 			toast(`Logging settings saved!`, 'success');
+
+			// save to local storage
+			saveToLocalStorage(modelDB)
 		}
 	});
 
@@ -494,17 +510,20 @@ async function setupWebcam() {
 
 // track label
 function trackLabel(labelName) {
-	if (labelName === foundLabelData.label) {
-		foundLabelData.duration = Date.now() - foundLabelData.date;
+
+	if (labelName === modelDB.previous.label) {
+		modelDB.previous.duration = Date.now() - modelDB.previous.date;
 	} else {
-		// console.log(labelName, foundLabelData.label);
-		if (foundLabelData.label !== ignoreLabelName && foundLabelData.duration > (10 * 1000)) {
-			console.log(labelName);
+		console.log(labelName, modelDB.previous.label, modelDB.log.threshold);
+		// if (modelDB.previous.label !== modelDB.log.ignore_label && modelDB.previous.duration > (modelDB.log.threshold * 1000)) {
+		if (modelDB.previous.duration > (modelDB.log.threshold || 5 * 1000)) {
+			console.log(modelDB.previous);
 			// logData(foundLabelData);
 		}
-		foundLabelData.date = Date.now();
-		foundLabelData.duration = 0;
-		foundLabelData.label = labelName;
+		
+		modelDB.previous.date = Date.now();
+		modelDB.previous.duration = 0;
+		modelDB.previous.label = labelName;
 	}
 	// console.log(foundLabelData);
 }
