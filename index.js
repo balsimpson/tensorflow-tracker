@@ -5,13 +5,6 @@ class Model {
 		this.labels = modelLabels || [];
 		this.data = modelData || undefined;
 		this.labelElement = labelsDivEl;
-		this.log = {
-			sheets_id: '',
-			sheets_url: '',
-			ignore_label: '',
-			threshold: 10
-		};
-		this.previous = {};
 	}
 
 	/* makes a button tag */
@@ -26,7 +19,7 @@ class Model {
 		const labelClose = document.createElement('i');
 		labelClose.setAttribute('class', 'close material-icons blue-grey-text text-lighten-2');
 		labelClose.setAttribute('data-name', label.classId);
-		labelClose.setAttribute('style', 'padding: 0 0 0 10px;');
+		labelClose.setAttribute('style', 'padding: 0 0 0 10;');
 		labelClose.textContent = 'close';
 		labelBtn.appendChild(labelClose);
 
@@ -38,17 +31,10 @@ class Model {
 		if (model) {
 			this.labels = model.labels || [];
 			this.data = model.data || undefined;
-			this.log = model.log || {}
 		} else {
 			console.log('no data to load');
 			this.labels = [];
 			this.data = undefined;
-			this.log = {
-				sheets_id: '',
-				sheets_url: '',
-				ignore_label: '',
-				threshold: 10
-			}
 		}
 
 		this.updateClassifier(this.data);
@@ -88,24 +74,6 @@ class Model {
 		return this;
 	}
 
-	/**
-	 * Log data to a Google Sheet
-	 * @param {string} sheetsId Google Sheets id
-	 * @param {string} stdlibURL Standard Library url
-	 * @param {string} ignoreLabel Label to ignore
-	 * @param {number} threshold Threshold in seconds for labellogging
-	 */
-
-	addLogging(sheetsId, stdlibURL, ignoreLabel, threshold) {
-		this.log = {
-			sheets_id: sheetsId,
-			stdlib_url: stdlibURL,
-			ignore_label: ignoreLabel || 'default',
-			threshold: threshold || 10
-		}
-		return this;
-	}
-
 	addLabel(labelName, labelCount = 0) {
 
 		let [labelExists] = this.labels.map(label => {
@@ -114,6 +82,7 @@ class Model {
 
 		if (labelExists) {
 			toast(`${labelName} already exists!`, 'error');
+			console.log(name, 'label exists');
 			return this;
 		} else {
 			let label = {
@@ -171,12 +140,14 @@ class Model {
 }
 
 const capture = () => {
+
+	// console.log('capture');
 	// add canvas element
-	const canvas = document.createElement('canvas');
-	document.querySelector('body').appendChild(canvas);
+	const canvas = document.getElementById('canvas');
 
 	// set canvas dimensions to video ones to not truncate picture
 	const videoElement = document.querySelector('#webcam');
+	videoElement.setAttribute('class', 'hide');
 	canvas.width = videoElement.width;
 	canvas.height = videoElement.height;
 
@@ -185,150 +156,154 @@ const capture = () => {
 
 	// get image data URL and remove canvas
 	const snapshot = canvas.toDataURL("image/png");
-	canvas.parentNode.removeChild(canvas);
+	// canvas.parentNode.removeChild(canvas);
 
-	const img = document.createElement('img');
-	img.setAttribute('src', snapshot);
-	document.querySelector('#confusion_matrix').appendChild(img);
-	// console.log(snapshot);
-	// update grid picture source
-	// document.querySelector;
+	// const img = document.createElement('img');
+	// img.setAttribute('src', snapshot);
+	// document.querySelector('#confusion_matrix').appendChild(img);
+	requestAnimationFrame(capture);
 };
 
 let labelDivEl = getEl('label_list');
 let modelDB = new Model([], {}, labelDivEl);
 
-
-// Add logging
-// modelDB.addLogging(sheetsId, stdlibURL, ignoreLabel)
-
 let net;
 let classifier = new knnClassifier.KNNClassifier();
 const webcamElement = document.getElementById('webcam');
 
+// let canvasElement = document.getElementById('myCanvas');
+// let ctx = canvasElement.getContext('2d');
+
 
 async function app() {
-	// Load the model.
-	net = await mobilenet.load();
-	console.log('Successfully loaded mobilenet');
-
-	const webcam = await tf.data.webcam(webcamElement);
-	console.log('Successfully loaded video');
-
-	getEl('preloader').classList.add('hide');
-
-	let saved_data = await getFromLocalStorage();
-	modelDB.load(saved_data);
-
-	modelDB.renderLabels();
-
-	const addExample = async (classId) => {
-		const img = await webcam.capture();
-		const activation = net.infer(img, 'conv_preds');
-
-		classifier.addExample(activation, classId);
-		// console.log('count:', classifier.getClassExampleCount()[classId]);
-		modelDB.updateLabel(classId, classifier.getClassExampleCount()[classId]);
-
-		let modelData = await getModelData();
-		modelDB.update(modelDB.labels, modelData);
-		saveToLocalStorage(modelDB);
-		// Dispose the tensor to release the memory.
-		img.dispose();
-	};
-
-	// delete all data saved in local storage
-	getEl('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
-
-	getEl('uploadModel').addEventListener('change', handleFileSelect, false);
-
-
-
-	getEl('downloadModel').addEventListener('click', event => {
-		downloadJSON(JSON.stringify(modelDB));
-	})
-
-	// label button click listener
-	getEl('label_list').addEventListener('click', async (event) => {
-		let id = event.target.getAttribute('data-name');
-		if (event.target.classList.contains('btn')) {
-			addExample(event.target.id);
-		} else if (event.target.classList.contains('close')) {
-			modelDB.deleteLabel(id);
-			let modelData = await getModelData();
-			modelDB.update(modelDB.labels, modelData)
-			saveToLocalStorage(modelDB);
-		}
-	});
-	
-	// save settings
-	getEl('saveSettings').addEventListener('click', async (event) => {
-		let sheets_id = getEl('sheets_id').value;
-		let sheets_url = getEl('sheets_url').value;
-		let ignore_label = getEl('ignore_label').value;
-		let threshold = getEl('threshold').value;
-
-		if (sheets_id && sheets_url) {
-			modelDB.addLogging(sheets_id, sheets_url, ignore_label, threshold);
-			toast(`Logging settings saved!`, 'success');
-
-			// save to local storage
-			saveToLocalStorage(modelDB)
-		}
-	});
-
-	getEl('add_label_form').addEventListener('submit', (event) => {
-		event.preventDefault();
-		let label_name = getEl('label_name').value;
-
-		if (label_name) {
-			modelDB.addLabel(label_name);
-			getEl('add_label_form').reset();
-			saveToLocalStorage(modelDB);
-			// getEl('label_name').value = '';
-			// getEl('label_name').classList.remove('valid');
-		} else {
-			toast('Label name cannot be empty', 'error');
-		}
-	});
-
-
-	// prediction elements
-	let predictions = document.getElementById('console');
-	let labelEl = document.getElementById('label');
-	let confidenceEl = document.getElementById('confidence');
-
-	let confusionEl = document.getElementById('confusion_matrix');
 
 	try {
-		while (true) {
-			if (classifier.getNumClasses() > 0) {
-				const img = await webcam.capture();
+		// Load the model.
+		net = await mobilenet.load();
+		console.log('Successfully loaded mobilenet');
+		// ctx.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
+		// const img1 = tf.browser.fromPixels(my32x32CanvasA);
 
-				// Get the activation from mobilenet from the webcam.
+		await setupWebcam();
+		// const webcam = await tf.data.webcam(webcamElement);
+		// console.log('Successfully loaded video', tf.data);
+		requestAnimationFrame(capture);
+
+		getEl('preloader').classList.add('hide');
+
+		let saved_data = await getFromLocalStorage();
+		modelDB.load(saved_data);
+
+		modelDB.renderLabels();
+
+		const addExample = async (classId) => {
+			// const img = await webcam.capture();
+
+			const snapshot = canvas.toDataURL("image/png");
+			const img = document.createElement('img');
+			img.onload = async function () {
 				const activation = net.infer(img, 'conv_preds');
-				// Get the most likely class and confidences from the classifier module.
-				const result = await classifier.predictClass(activation);
+
+				classifier.addExample(activation, classId);
+
+				console.log('count:', classifier.getClassExampleCount()[classId]);
+				modelDB.updateLabel(classId, classifier.getClassExampleCount()[classId]);
+
+				let modelData = await getModelData();
+				modelDB.update(modelDB.labels, modelData)
+				saveToLocalStorage(modelDB);
+				// Dispose the tensor to release the memory.
+				// img.dispose();
+			};
+			img.setAttribute('src', snapshot);
+		};
+
+		// delete all data saved in local storage
+		getEl('clearsaveddata').addEventListener('click', (event) => clearSavedData(event));
+
+		getEl('uploadModel').addEventListener('change', handleFileSelect, false);
 
 
-				if (Date.now() % 100 === 0) {
-					// console.log(result);
-				}
-				// console.log(classifier.getClassExampleCount());
-				if (result.label !== undefined) {
-					trackLabel(result.label);
-					displayPredictions(result, predictions, labelEl, confidenceEl);
-				}
-				img.dispose();
-			} else {
-				predictions.setAttribute('style', 'display: none;')
+
+		getEl('downloadModel').addEventListener('click', event => {
+			downloadJSON(JSON.stringify(modelDB));
+		})
+
+		// label button click listener
+		getEl('label_list').addEventListener('click', async (event) => {
+			let id = event.target.getAttribute('data-name');
+			if (event.target.classList.contains('btn')) {
+				addExample(event.target.id);
+			} else if (event.target.classList.contains('close')) {
+				modelDB.deleteLabel(id);
+				let modelData = await getModelData();
+				modelDB.update(modelDB.labels, modelData)
+				saveToLocalStorage(modelDB);
 			}
+		});
 
-			await tf.nextFrame();
+		getEl('add_label_form').addEventListener('submit', (event) => {
+			event.preventDefault();
+			let label_name = getEl('label_name').value;
+
+			if (label_name) {
+				modelDB.addLabel(label_name);
+				getEl('add_label_form').reset();
+				saveToLocalStorage(modelDB);
+				// getEl('label_name').value = '';
+				// getEl('label_name').classList.remove('valid');
+			} else {
+				toast('Label name cannot be empty', 'error');
+			}
+		});
+
+
+		// prediction elements
+		let predictions = document.getElementById('console');
+		let labelEl = document.getElementById('label');
+		let confidenceEl = document.getElementById('confidence');
+
+		let confusionEl = document.getElementById('confusion_matrix');
+
+		try {
+			while (true) {
+				if (classifier.getNumClasses() > 0) {
+					// const img = await webcam.capture();
+					const snapshot = canvas.toDataURL("image/png");
+					const img = document.createElement('img');
+					img.onload = async function () {
+						// Get the activation from mobilenet from the webcam.
+						const activation = net.infer(img, 'conv_preds');
+						// Get the most likely class and confidences from the classifier module.
+						const result = await classifier.predictClass(activation);
+
+						// console.log(classifier.getClassExampleCount());
+						if (result.label !== undefined) {
+							displayPredictions(result, predictions, labelEl, confidenceEl);
+						}
+					};
+					img.setAttribute('src', snapshot);
+
+
+
+					// if (Date.now() % 100 === 0) {
+					// 	// console.log(result);
+					// }
+
+					// img.dispose();
+				} else {
+					predictions.setAttribute('style', 'display: none;')
+				}
+
+				await tf.nextFrame();
+			}
+		} catch (err) {
+			console.log(err);
 		}
-	} catch (err) {
-		console.log(err);
+	} catch (error) {
+		console.log(error);
 	}
+
 
 }
 
@@ -489,13 +464,13 @@ function fromDatasetObject(datasetObject) {
 }
 
 async function setupWebcam() {
-	console.log('setting up video');
 	return new Promise((resolve, reject) => {
 		const navigatorAny = navigator;
 		navigator.getUserMedia = navigator.getUserMedia ||
-			navigatorAny.webkitGetUserMedia || navigatorAny.mozGetUserMedia ||
-			navigatorAny.msGetUserMedia;
+		navigatorAny.webkitGetUserMedia || navigatorAny.mozGetUserMedia ||
+		navigatorAny.msGetUserMedia || navigatorAny.mediaDevices.getUserMedia;
 		if (navigator.getUserMedia) {
+			console.log('setting up video');
 			navigator.getUserMedia({ video: true },
 				stream => {
 					webcamElement.srcObject = stream;
@@ -508,95 +483,47 @@ async function setupWebcam() {
 	});
 }
 
-// track label
-function trackLabel(labelName) {
+// window.onload = function() {
 
-	if (labelName === modelDB.previous.label) {
-		modelDB.previous.duration = Date.now() - modelDB.previous.date;
-	} else {
-		console.log(labelName, modelDB.previous.label, modelDB.log.threshold);
-		// if (modelDB.previous.label !== modelDB.log.ignore_label && modelDB.previous.duration > (modelDB.log.threshold * 1000)) {
-		if (modelDB.previous.duration > (modelDB.log.threshold || 5 * 1000)) {
-			console.log(modelDB.previous);
-			// logData(foundLabelData);
-		}
-		
-		modelDB.previous.date = Date.now();
-		modelDB.previous.duration = 0;
-		modelDB.previous.label = labelName;
-	}
-	// console.log(foundLabelData);
-}
-
-function millisToDuration(millis, type) {
-	let minutes = Math.floor(millis / 60000);
-	let seconds = ((millis % 60000) / 1000).toFixed(0);
-	let response = '';
-
-	if (type === 'text') {
-		if (minutes > 0) {
-			let min = minutes > 1 ? 'minutes' : 'minute';
-			response += `${minutes} ${min}`
-		}
-
-		if (seconds > 0) {
-			let sec = seconds > 1 ? 'seconds' : 'second';
-			response += ` ${seconds} ${sec}`
-		}
-	} else {
-		if (minutes > 0) {
-			response += `${minutes} min `
-		}
-
-		if (seconds > 0) {
-			response += `${seconds} sec`
-		}
-	}
-
-	// console.log('duration', response);
-	return response;
-}
-
-
-function getDate(timestamp) {
-	let d = new Date(timestamp);
-	return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()} ${d.toLocaleTimeString()}`;
-}
-
-// log data to google sheets through stdlib
-async function logData(data) {
-
-	if (sheetId) {
-		let save_data = {
-			fieldsets: [{
-				date: getDate(data.date),
-				duration: data.duration,
-				readable: millisToDuration(data.duration),
-				label: data.label
-			}],
-			range: 'log!A1:D',
-			spreadsheetId: sheetId
-		}
-
-		axios({
-			url: 'https://tinkr.api.stdlib.com/sheets@dev/add/',
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json"
-			},
-			data: save_data
-		})
-			.then(result => {
-				return result;
-			})
-
-			.catch(err => {
-				console.log(err);
-			})
-	} else {
-		console.log('sheetId is not specified. No data logged.')
-	}
-}
-
-
-
+// 	// Normalize the various vendor prefixed versions of getUserMedia.
+// 	navigator.getUserMedia = (navigator.getUserMedia ||
+// 							  navigator.webkitGetUserMedia ||
+// 							  navigator.mozGetUserMedia || 
+// 							  navigator.msGetUserMedia);
+  
+  
+	
+// 	// Check that the browser supports getUserMedia.
+// 	// If it doesn't show an alert, otherwise continue.
+// 	if (navigator.getUserMedia) {
+// 	  // Request the camera.
+// 	  navigator.getUserMedia(
+// 		// Constraints
+// 		{
+// 		  video: true
+// 		},
+	
+// 		// Success Callback
+// 		function(localMediaStream) {
+// 		  // Get a reference to the video element on the page.
+// 		  var vid = document.getElementById('webcam');
+		  
+// 		  // Create an object URL for the video stream and use this 
+// 		  // to set the video source.
+// 		//   vid.src = window.URL.createObjectURL(localMediaStream);
+// 		  vid.srcObject = localMediaStream;
+// 		},
+	
+// 		// Error Callback
+// 		function(err) {
+// 		  // Log the error to the console.
+// 		  console.log('The following error occurred when trying to use getUserMedia: ' + err);
+// 		}
+// 	  );
+	
+// 	} else {
+// 	  alert('Sorry, your browser does not support getUserMedia');
+// 	}
+  
+//   }
+  
