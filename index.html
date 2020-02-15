@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
+<html>
 
 <head>
 	<!--Import Google Icon Font-->
@@ -12,14 +11,12 @@
 		href="https://www.gstatic.com/devrel-devsite/prod/v172e5dffd78b32f4b12f8112b00e940d4993af48229fac5346097b33edb0f543/tensorflow/images/favicon.png">
 
 	<!--Let browser know website is optimized for mobile-->
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>tracker</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 	<!-- Load the latest version of TensorFlow.js -->
-	<!-- <script src="https://unpkg.com/@tensorflow/tfjs"></script>
-	<script src="https://unpkg.com/@tensorflow-models/mobilenet"></script>
-	<script src="https://unpkg.com/@tensorflow-models/knn-classifier"></script> -->
+	<!-- <script src="https://unpkg.com/@tensorflow/tfjs"></script> -->
+	<!-- <script src="https://unpkg.com/@tensorflow-models/mobilenet"></script> -->
+	<!-- <script src="https://unpkg.com/@tensorflow-models/knn-classifier"></script> -->
 	<script src="js/tf.min.js"></script>
 	<script src="js/mobilenet.min.js"></script>
 	<script src="js/knn-classifier.min.js"></script>
@@ -31,12 +28,7 @@
 	<nav class="blue-grey darken-4">
 		<div class="container">
 			<div class="nav-wrapper">
-				<a href="" class="brand-logo left">trackr</a>
-				<ul id="nav-mobile" class="right">
-					<li><a class="modal-trigger" href="#modal1"><i class="material-icons">settings</i></a></li>
-					<!-- <li><a class="waves-effect waves-light btn modal-trigger" href="#modal1">Modal</a></li> -->
-				</ul>
-
+				<a href="" class="brand-logo">trackr</a>
 			</div>
 		</div>
 		<div id="preloader_container">
@@ -56,6 +48,8 @@
 					background: black;">
 						<video class="" autoplay="" playsinline="" muted="" id="webcam" width="224"
 							height="224"></video>
+
+						<canvas id="canvas" width="224" height="224"></canvas>
 					</div>
 
 					<div class="card-action blue-grey darken-3" style="min-height: 74px;">
@@ -78,11 +72,12 @@
 			<div class="col s12" id="label_list">
 				<!-- <p class="blue-grey-text lighten-1" >No labels found. Add new labels and click on them to train your model</p> -->
 			</div>
+
 			<div class="row">
 				<form id="add_label_form" class="col s12">
 					<div class="input-field">
 						<input placeholder="Name of the label" id="label_name" type="text"
-							class="validate center white-text" style=" width: 224px;">
+							class="validate center white-text" style=" width: 224;">
 						<span class="helper-text blue-grey-text text-lighten-2">e.g. cat or dog</span>
 					</div>
 					<button id="add_label_btn" class="btn btn-small blue-grey darken-3">Add Label</button>
@@ -109,27 +104,26 @@
 						exceeds the size limit, download it as a JSON file. To load the model, upload the JSON file.</p>
 					<div class="col s6">
 						<p class="blue-grey-text text-lighten-2">Download the model JSON file </p>
-
+						
 						<div class="file-field input-field">
 							<a class="waves-effect waves-light btn blue-grey darken-4" style="margin-bottom: 20px;"
-								id="downloadModel"><i class="material-icons left">file_download</i>Download</a>
+							id="downloadModel"><i class="material-icons left">file_download</i>Download</a>
 						</div>
-
-
+						
+						
 					</div>
 
 					<div class="col s6 right">
 						<p class="blue-grey-text text-lighten-2">Upload the model JSON file </p>
 						<!-- <form action="#"> -->
 						<div class="file-field input-field">
-							<a class="waves-effect waves-light btn blue-grey darken-4 center"
-								style="margin-bottom: 20px;">
+							<a class="waves-effect waves-light btn blue-grey darken-4 center" style="margin-bottom: 20px;">
 								<span><i class="material-icons left">file_upload</i> Upload</span>
 								<input id="uploadModel" type="file">
 							</a>
 							<div class="file-path-wrapper">
 								<input class="file-path validate blue-grey-text text-lighten-2 center" type="text">
-							</div>
+							  </div>
 						</div>
 						<!-- </form> -->
 					</div>
@@ -153,90 +147,46 @@
 		<!-- </div> -->
 	</footer>
 
-	<!-- Modal Structure -->
-	<div id="modal1" class="modal modal-fixed-footer">
-		<div class="modal-content">
-			<h4>Log data to Google Sheets</h4>
-			<p> Click the Deploy button to deploy your Google Sheets Connector on Standard
-				Library. Once deployed, copy the Google Sheets ID and the Standard Library URL to the fields below. </p>
-			<br>
-			<a href="https://build.stdlib.com/from-github/?repo=balsimpson/stdlib-google-sheets"><img
-					src="https://deploy.stdlib.com/static/images/deploy.svg" width="192"></a>
-
-			<br>
-			<p>
-				Go to <a href="https://classifier.glideapp.io/">classifier.glideapp.io</a> for a custom app with all the
-				logged data.
-			</p>
-			<hr>
-
-			<form>
-				<div class="row">
-					<!-- Google Sheets ID -->
-					<div class="input-field">
-						<i class="material-icons prefix">insert_chart</i>
-						<input id="sheets_id" type="text" class="validate">
-						<label for="sheets_id">Google Sheets ID</label>
-						<span class="helper-text left-align">e.g. 1a3N1uuV_BeDkNWRLYGrhLrt7T6IQs8GcjLUosdgLDxs</span>
-					</div>
-
-					<!-- StdLib Google Sheets Connector URL -->
-					<div class="input-field">
-						<i class="material-icons prefix">settings_ethernet</i>
-						<input id="sheets_url" type="url" class="validate">
-						<label for="sheets_url">Standard Library URL</label>
-						<span class="helper-text left-align" data-error="Not a valid URL" data-success="Valid URL">e.g.
-							https://username.api.stdlib.com/sheets@dev/</span>
-
-					</div>
-
-
-				</div>
-
-				<hr>
-
-				<div class="row">
-					<p>Ignored label name will not be logged. Starts logging only after threshold seconds have passed.
-					</p>
-					<form>
-						<!-- Ignore Label Name -->
-						<div class="input-field col s8">
-							<i class="material-icons prefix">tag</i>
-							<input id="ignore_label" type="text" class="validate">
-							<label for="ignore_label">Label to ignore</label>
-							<span class="helper-text left-align" data-error="Not a valid URL"
-								data-success="Valid URL">Add
-								the label name to ignore </span>
-						</div>
-
-						<!-- Ignore Label Name -->
-						<div class="input-field col s4">
-							<i class="material-icons prefix">timer</i>
-							<input id="threshold" type="number" class="validate" value=10>
-							<label for="threshold">Threshold</label>
-							<span class="helper-text left-align">In seconds</span>
-						</div>
-				</div>
-			</form>
-		</div>
-		<div class="modal-footer">
-			<a id="saveSettings" href="#!" class="left  waves-effect waves-teal btn blue-grey modal-close">Save</a>
-			<a id="saveSettings" href="#!" class="right modal-close waves-effect waves-green btn-flat">Cancel</a>
-		</div>
-	</div>
-	</div>
 	<!--JavaScript at end of body for optimized loading-->
 	<script type="text/javascript" src="js/materialize.min.js"></script>
 	<!-- Load index.js after the content of the page -->
 	<script src="index.js"></script>
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
-			var elems = document.querySelectorAll('.modal');
-			var instances = M.Modal.init(elems, {
-				inDuration: 0,
-				outDuration: 0
-			});
+			// var elems_fab = document.querySelectorAll('.fixed-action-btn');
+			// var instances = M.FloatingActionButton.init(elems_fab, {});
+
+			// var elems_collapsible = document.querySelectorAll('.collapsible');
+			// var instances = M.Collapsible.init(elems_collapsible, {});
+
+			// var elems = document.querySelectorAll('.dropdown-trigger');
+			// var instances = M.Dropdown.init(elems, {});
+			// console.log('M:', models);
+			// var elems = document.querySelectorAll('select');
+			// var instances = M.FormSelect.init(elems, {});
+			// renderModelSelect(models);
+			// var instances = M.FormSelect.init(elems, {
+			// 	// classes: 'blue'
+			// });
+
+			// document.getElementById('models_list').change(function () {
+			// });
 		});
+
+		function renderModelSelect(models) {
+			getEl('models_list').innerHTML = '';
+			if (models.length > 0) {
+				models.map(model => {
+					getEl('models_list').innerHTML += `<option selected value="${model.name}">${model.name}</option>`
+				})
+			} else {
+				getEl('models_list').innerHTML += `<option class="white-text" value="">No models saved</option>`
+			}
+			var elems = document.querySelectorAll('select');
+			var instances = M.FormSelect.init(elems, {
+				// classes: 'blue'
+			});
+		}
 	</script>
 
 </body>
